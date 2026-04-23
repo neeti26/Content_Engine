@@ -22,7 +22,7 @@ function parseJSON<T>(text: string): T {
   try { return JSON.parse(text.trim()) as T; } catch { /* */ }
 
   // 2. Strip ```json ... ``` or ``` ... ``` fences
-  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/s);
+  const fenced = text.match(/```(?:json)?[\r\n]*([\s\S]*?)```/);
   if (fenced?.[1]) {
     try { return JSON.parse(fenced[1].trim()) as T; } catch { /* */ }
   }
