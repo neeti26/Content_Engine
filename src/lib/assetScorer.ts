@@ -80,7 +80,7 @@ export async function selectBestAssets(
 
   const result = await generateJSON<{
     linkedin: string; instagramPost: string; instagramStory: string;
-    twitter: string; caseStudy: string[]; rationale: Record<string, string>;
+    twitter: string; whatsapp: string; caseStudy: string[]; rationale: Record<string, string>;
   }>(
     'You are a marketing strategist. Select the best image ID for each platform. Return only JSON.',
     `Event: ${eventContext}
