@@ -11,11 +11,10 @@ function getClient(): GoogleGenerativeAI {
   return client;
 }
 
-// Free-tier models in order of preference (fastest → most capable)
-// gemini-1.5-flash-8b: free, 15 RPM, vision support — best for scoring
-// gemini-1.5-flash:    free, 15 RPM, vision support — fallback
-const VISION_MODEL = 'gemini-1.5-flash-8b';
-const TEXT_MODEL   = 'gemini-1.5-flash-8b';
+// Gemini 2.5 Flash-Lite: free tier, 15 RPM, 1000 req/day, vision support
+// Fallback: gemini-2.5-flash (10 RPM free)
+const MODEL = 'gemini-2.5-flash-lite-preview-06-17';
+const MODEL_FALLBACK = 'gemini-2.5-flash';
 
 const safetySettings = [
   { category: HarmCategory.HARM_CATEGORY_HARASSMENT,        threshold: HarmBlockThreshold.BLOCK_NONE },
@@ -26,29 +25,30 @@ const safetySettings = [
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-/** Retry wrapper — handles 429 rate limits automatically */
-async function withRetry<T>(fn: () => Promise<T>, retries = 3, delayMs = 5000): Promise<T> {
-  for (let i = 0; i < retries; i++) {
-    try {
-      return await fn();
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      const isRateLimit = msg.includes('429') || msg.includes('quota') || msg.includes('Too Many');
-      if (isRateLimit && i < retries - 1) {
-        console.log(`Rate limit hit, waiting ${delayMs}ms before retry ${i + 1}/${retries - 1}...`);
-        await sleep(delayMs);
-        delayMs *= 1.5; // exponential backoff
-        continue;
+async function withRetry<T>(fn: (model: string) => Promise<T>): Promise<T> {
+  const models = [MODEL, MODEL_FALLBACK];
+  let lastErr: unknown;
+  for (const model of models) {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        return await fn(model);
+      } catch (err) {
+        lastErr = err;
+        const msg = String(err);
+        const isRateLimit = msg.includes('429') || msg.includes('quota') || msg.includes('Too Many');
+        const isNotFound  = msg.includes('404') || msg.includes('not found');
+        if (isNotFound) break; // try next model
+        if (isRateLimit && attempt < 2) {
+          await sleep(4000 * (attempt + 1));
+          continue;
+        }
+        if (!isRateLimit) break;
       }
-      throw err;
     }
   }
-  throw new Error('Max retries exceeded');
+  throw lastErr;
 }
 
-/**
- * Score + describe an image using Gemini 1.5 Flash 8B (free tier, vision).
- */
 export async function scoreAndDescribeImage(
   base64Image: string,
   mimeType: string,
@@ -57,55 +57,36 @@ export async function scoreAndDescribeImage(
   sharpness: number; composition: number; brandRelevance: number;
   humanEngagement: number; overall: number; reasoning: string; description: string;
 }> {
-  return withRetry(async () => {
+  return withRetry(async (modelName) => {
     const model = getClient().getGenerativeModel({
-      model: VISION_MODEL,
+      model: modelName,
       safetySettings,
-      generationConfig: {
-        responseMimeType: 'application/json',
-        maxOutputTokens: 250,
-        temperature: 0.1,
-      },
+      generationConfig: { responseMimeType: 'application/json', maxOutputTokens: 250, temperature: 0.1 },
     });
-
-    const prompt = `Event: ${eventContext}
-
-Score this event photo (0-10 each) and describe it. Return JSON only:
-{"sharpness":<0-10>,"composition":<0-10>,"brandRelevance":<0-10>,"humanEngagement":<0-10>,"overall":<weighted 0-10>,"reasoning":"<1 sentence>","description":"<1 sentence: people, energy, setting>"}`;
-
+    const prompt = `Event: ${eventContext}\nScore this photo (0-10 each) and describe it. JSON only:\n{"sharpness":<n>,"composition":<n>,"brandRelevance":<n>,"humanEngagement":<n>,"overall":<n>,"reasoning":"<1 sentence>","description":"<1 sentence>"}`;
     const result = await model.generateContent([
       { inlineData: { data: base64Image, mimeType: mimeType as 'image/jpeg' | 'image/png' | 'image/webp' } },
       prompt,
     ]);
     const text = result.response.text();
-    const json = text.match(/\{[\s\S]*\}/)?.[0] ?? text;
-    return JSON.parse(json);
+    return JSON.parse(text.match(/\{[\s\S]*\}/)?.[0] ?? text);
   });
 }
 
-/**
- * Generate structured JSON using Gemini 1.5 Flash 8B (free tier, text).
- */
 export async function generateJSON<T>(
   systemPrompt: string,
   userPrompt: string,
   maxTokens = 1000
 ): Promise<T> {
-  return withRetry(async () => {
+  return withRetry(async (modelName) => {
     const model = getClient().getGenerativeModel({
-      model: TEXT_MODEL,
+      model: modelName,
       safetySettings,
-      generationConfig: {
-        responseMimeType: 'application/json',
-        maxOutputTokens: maxTokens,
-        temperature: 0.8,
-      },
+      generationConfig: { responseMimeType: 'application/json', maxOutputTokens: maxTokens, temperature: 0.8 },
       systemInstruction: systemPrompt,
     });
-
     const result = await model.generateContent(userPrompt);
     const text = result.response.text();
-    const json = text.match(/\{[\s\S]*\}/)?.[0] ?? text;
-    return JSON.parse(json) as T;
+    return JSON.parse(text.match(/\{[\s\S]*\}/)?.[0] ?? text) as T;
   });
 }
