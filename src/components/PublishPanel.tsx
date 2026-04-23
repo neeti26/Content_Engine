@@ -210,7 +210,7 @@ export default function PublishPanel({ content, assets, brief, onClose }: Props)
           {PLATFORMS.map((p) => {
             const shareText = getShareText(p.id, content);
             const isOpen = expanded === p.id;
-            const asset = findAsset(content.selectedAssets[p.id] ?? '');
+            const asset = findAsset(content.selectedAssets[p.id as keyof typeof content.selectedAssets] as string ?? '');
 
             return (
               <div key={p.id} className="rounded-2xl overflow-hidden" style={{ border: `1px solid ${p.border}`, background: p.bg }}>
