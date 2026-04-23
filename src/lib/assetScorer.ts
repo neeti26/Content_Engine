@@ -1,60 +1,38 @@
 import { MediaAsset, AssetScore } from '@/types';
-import { analyzeImageWithVision, generateJSON } from './openai';
+import { scoreAndDescribeImage, generateJSON } from './openai';
 
-interface ScoringResult {
-  sharpness: number;
-  composition: number;
-  brandRelevance: number;
-  humanEngagement: number;
-  overall: number;
-  reasoning: string;
-}
-
-export async function scoreAsset(
-  asset: MediaAsset,
+/** Score all assets in PARALLEL — 10x faster than sequential */
+export async function scoreAllAssets(
+  assets: MediaAsset[],
   eventContext: string
-): Promise<AssetScore> {
-  const prompt = `You are an expert marketing photographer and content strategist.
+): Promise<Array<MediaAsset & { description: string }>> {
+  const results = await Promise.allSettled(
+    assets.map((asset) => scoreAndDescribeImage(asset.base64, asset.mimeType, eventContext))
+  );
 
-Analyze this event photo for marketing use. Score it on these dimensions (0-10 each):
-
-1. **Sharpness & Technical Quality**: Is the image sharp, well-lit, properly exposed?
-2. **Composition**: Is the framing good? Rule of thirds, visual balance, focal point?
-3. **Brand Relevance**: Does it show brand elements, stage, banners, or key moments?
-4. **Human Engagement**: Does it show people engaged, excited, or in meaningful interaction?
-
-Event Context: ${eventContext}
-
-Respond with JSON:
-{
-  "sharpness": <0-10>,
-  "composition": <0-10>,
-  "brandRelevance": <0-10>,
-  "humanEngagement": <0-10>,
-  "overall": <0-10, weighted average>,
-  "reasoning": "<2-3 sentence explanation>"
-}`;
-
-  try {
-    const result = await analyzeImageWithVision(asset.base64, asset.mimeType, prompt);
-    const jsonMatch = result.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) return getDefaultScore();
-    const parsed = JSON.parse(jsonMatch[0]) as ScoringResult;
-    return {
-      sharpness: clamp(parsed.sharpness, 0, 10),
-      composition: clamp(parsed.composition, 0, 10),
-      brandRelevance: clamp(parsed.brandRelevance, 0, 10),
-      humanEngagement: clamp(parsed.humanEngagement, 0, 10),
-      overall: clamp(parsed.overall, 0, 10),
-      reasoning: parsed.reasoning || 'No reasoning provided',
-    };
-  } catch {
-    return getDefaultScore();
-  }
+  return assets.map((asset, i) => {
+    const r = results[i];
+    if (r.status === 'fulfilled') {
+      const v = r.value;
+      return {
+        ...asset,
+        description: v.description ?? '',
+        score: {
+          sharpness: clamp(v.sharpness, 0, 10),
+          composition: clamp(v.composition, 0, 10),
+          brandRelevance: clamp(v.brandRelevance, 0, 10),
+          humanEngagement: clamp(v.humanEngagement, 0, 10),
+          overall: clamp(v.overall, 0, 10),
+          reasoning: v.reasoning ?? '',
+        } as AssetScore,
+      };
+    }
+    return { ...asset, description: '', score: defaultScore() };
+  });
 }
 
 export async function selectBestAssets(
-  assets: MediaAsset[],
+  assets: Array<MediaAsset & { description?: string }>,
   eventContext: string
 ): Promise<{
   linkedin: string;
@@ -64,64 +42,41 @@ export async function selectBestAssets(
   caseStudy: string[];
   rationale: Record<string, string>;
 }> {
-  const scored = assets
+  const scored = [...assets]
     .filter((a) => a.score)
     .sort((a, b) => (b.score?.overall ?? 0) - (a.score?.overall ?? 0));
 
   if (scored.length === 0) {
     const ids = assets.map((a) => a.id);
-    return {
-      linkedin: ids[0] ?? '',
-      instagramPost: ids[1] ?? ids[0] ?? '',
-      instagramStory: ids[2] ?? ids[0] ?? '',
-      twitter: ids[1] ?? ids[0] ?? '',
-      caseStudy: ids.slice(0, 4),
-      rationale: {},
-    };
+    return { linkedin: ids[0]??'', instagramPost: ids[1]??ids[0]??'', instagramStory: ids[2]??ids[0]??'', twitter: ids[1]??ids[0]??'', caseStudy: ids.slice(0,4), rationale: {} };
   }
 
-  const assetSummaries = scored.slice(0, Math.min(scored.length, 10)).map((a) => ({
+  const summaries = scored.slice(0, 10).map((a) => ({
     id: a.id,
     name: a.name,
+    description: (a as MediaAsset & { description?: string }).description ?? '',
     score: a.score,
   }));
 
   const result = await generateJSON<{
-    linkedin: string;
-    instagramPost: string;
-    instagramStory: string;
-    twitter: string;
-    caseStudy: string[];
-    rationale: Record<string, string>;
+    linkedin: string; instagramPost: string; instagramStory: string;
+    twitter: string; caseStudy: string[]; rationale: Record<string, string>;
   }>(
-    `You are a marketing content strategist. Select the best images for each platform based on scores and context.`,
-    `Event Context: ${eventContext}
+    'You are a marketing strategist. Select the best image ID for each platform.',
+    `Event: ${eventContext}
 
-Available assets with scores:
-${JSON.stringify(assetSummaries, null, 2)}
+Assets (sorted best→worst):
+${JSON.stringify(summaries, null, 2)}
 
-Select the best asset ID for each platform:
-- LinkedIn: professional, high-quality, brand-forward
-- Instagram Post: visually striking, engaging, colorful
-- Instagram Story: bold, high-energy, works cropped vertically
-- Twitter/X: dynamic, shareable, tells a story at a glance
-- Case Study: 3-5 diverse images showing different aspects
+Rules:
+- linkedin: professional, brand-forward, high overall score
+- instagramPost: visually striking, colorful, high engagement score
+- instagramStory: bold, works cropped to 9:16, high composition score
+- twitter: dynamic, shareable, tells a story instantly
+- caseStudy: pick 3-4 diverse images showing different aspects
 
 Return JSON:
-{
-  "linkedin": "<asset_id>",
-  "instagramPost": "<asset_id>",
-  "instagramStory": "<asset_id>",
-  "twitter": "<asset_id>",
-  "caseStudy": ["<asset_id>"],
-  "rationale": {
-    "linkedin": "<why>",
-    "instagramPost": "<why>",
-    "instagramStory": "<why>",
-    "twitter": "<why>",
-    "caseStudy": "<why>"
-  }
-}`
+{"linkedin":"<id>","instagramPost":"<id>","instagramStory":"<id>","twitter":"<id>","caseStudy":["<id>","<id>","<id>"],"rationale":{"linkedin":"<why>","instagramPost":"<why>","instagramStory":"<why>","twitter":"<why>","caseStudy":"<why>"}}`
   );
 
   return {
@@ -134,17 +89,5 @@ Return JSON:
   };
 }
 
-function clamp(val: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, val));
-}
-
-function getDefaultScore(): AssetScore {
-  return {
-    sharpness: 5,
-    composition: 5,
-    brandRelevance: 5,
-    humanEngagement: 5,
-    overall: 5,
-    reasoning: 'Default score — could not analyze image',
-  };
-}
+function clamp(v: number, min: number, max: number) { return Math.max(min, Math.min(max, v)); }
+function defaultScore(): AssetScore { return { sharpness:5, composition:5, brandRelevance:5, humanEngagement:5, overall:5, reasoning:'Could not analyze' }; }
