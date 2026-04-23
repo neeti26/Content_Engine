@@ -61,9 +61,13 @@ export async function selectBestAssets(
   if (scored.length === 0) {
     const ids = assets.map((a) => a.id);
     return {
-      linkedin: ids[0] ?? '', instagramPost: ids[1] ?? ids[0] ?? '',
-      instagramStory: ids[2] ?? ids[0] ?? '', twitter: ids[1] ?? ids[0] ?? '',
-      caseStudy: ids.slice(0, 4), rationale: {},
+      linkedin:      ids[0] ?? '',
+      instagramPost: ids[1] ?? ids[0] ?? '',
+      instagramStory:ids[2] ?? ids[0] ?? '',
+      twitter:       ids[1] ?? ids[0] ?? '',
+      whatsapp:      ids[1] ?? ids[0] ?? '',
+      caseStudy:     ids.slice(0, 4),
+      rationale:     {} as Record<string, string>,
     };
   }
 
@@ -109,7 +113,7 @@ Return this JSON selecting the best asset ID for each platform:
     twitter:       result.twitter       ?? scored[1]?.id ?? scored[0]?.id ?? '',
     whatsapp:      result.whatsapp      ?? scored[1]?.id ?? scored[0]?.id ?? '',
     caseStudy:     result.caseStudy     ?? scored.slice(0, 4).map((a) => a.id),
-    rationale:     result.rationale     ?? {},
+    rationale:     (result.rationale ?? {}) as Record<string, string>,
   };
 }
 
