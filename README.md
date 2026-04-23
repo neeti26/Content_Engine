@@ -144,5 +144,3 @@ src/
 Built for the StepOne AI Buildathon 2026.
 
 ---
-
-*Content was generated for demonstration purposes. All AI outputs should be reviewed before publishing.*
