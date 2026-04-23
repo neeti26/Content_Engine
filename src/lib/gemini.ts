@@ -11,10 +11,8 @@ function getClient(): GoogleGenerativeAI {
   return client;
 }
 
-// Gemini 2.5 Flash-Lite: free tier, 15 RPM, 1000 req/day, vision support
-// Fallback: gemini-2.5-flash (10 RPM free)
-const MODEL = 'gemini-2.5-flash-lite-preview-06-17';
-const MODEL_FALLBACK = 'gemini-2.5-flash';
+// Use gemini-2.5-flash — reliable free tier with JSON support
+const MODELS = ['gemini-2.5-flash', 'gemini-1.5-flash'];
 
 const safetySettings = [
   { category: HarmCategory.HARM_CATEGORY_HARASSMENT,        threshold: HarmBlockThreshold.BLOCK_NONE },
@@ -23,35 +21,48 @@ const safetySettings = [
   { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
 ];
 
-/** Strip markdown fences and extract clean JSON from Gemini response */
-function extractJSON(text: string): string {
-  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/);
-  if (fenced) return fenced[1].trim();
-  const obj = text.match(/\{[\s\S]*\}/);
-  if (obj) return obj[0];
-  return text.trim();
-}
-
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+/**
+ * Robustly extract JSON from any Gemini response.
+ * Handles: raw JSON, ```json fences, text before/after JSON.
+ */
+function parseGeminiJSON<T>(text: string): T {
+  // 1. Try direct parse first
+  try { return JSON.parse(text.trim()) as T; } catch { /* continue */ }
+
+  // 2. Strip ```json ... ``` or ``` ... ``` fences
+  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/s);
+  if (fenced) {
+    try { return JSON.parse(fenced[1].trim()) as T; } catch { /* continue */ }
+  }
+
+  // 3. Find the outermost { ... } block
+  const start = text.indexOf('{');
+  const end   = text.lastIndexOf('}');
+  if (start !== -1 && end !== -1 && end > start) {
+    try { return JSON.parse(text.slice(start, end + 1)) as T; } catch { /* continue */ }
+  }
+
+  // 4. Log and throw with context
+  console.error('Failed to parse Gemini response as JSON. Raw text:', text.slice(0, 500));
+  throw new Error(`Invalid JSON from Gemini: ${text.slice(0, 200)}`);
+}
+
 async function withRetry<T>(fn: (model: string) => Promise<T>): Promise<T> {
-  const models = [MODEL, MODEL_FALLBACK];
   let lastErr: unknown;
-  for (const model of models) {
-    for (let attempt = 0; attempt < 3; attempt++) {
+  for (const model of MODELS) {
+    for (let attempt = 0; attempt < 2; attempt++) {
       try {
         return await fn(model);
       } catch (err) {
         lastErr = err;
         const msg = String(err);
-        const isRateLimit = msg.includes('429') || msg.includes('quota') || msg.includes('Too Many');
-        const isNotFound  = msg.includes('404') || msg.includes('not found');
-        if (isNotFound) break; // try next model
-        if (isRateLimit && attempt < 2) {
-          await sleep(4000 * (attempt + 1));
-          continue;
-        }
-        if (!isRateLimit) break;
+        const isRate   = msg.includes('429') || msg.includes('quota') || msg.includes('Too Many');
+        const isModel  = msg.includes('404') || msg.includes('not found') || msg.includes('not supported');
+        if (isModel) break; // try next model immediately
+        if (isRate && attempt === 0) { await sleep(5000); continue; }
+        break;
       }
     }
   }
@@ -70,32 +81,39 @@ export async function scoreAndDescribeImage(
     const model = getClient().getGenerativeModel({
       model: modelName,
       safetySettings,
-      generationConfig: { responseMimeType: 'application/json', maxOutputTokens: 250, temperature: 0.1 },
+      generationConfig: { maxOutputTokens: 300, temperature: 0.1 },
     });
-    const prompt = `Event: ${eventContext}\nScore this photo (0-10 each) and describe it. JSON only:\n{"sharpness":<n>,"composition":<n>,"brandRelevance":<n>,"humanEngagement":<n>,"overall":<n>,"reasoning":"<1 sentence>","description":"<1 sentence>"}`;
+
+    const prompt = `You are a marketing photo analyst. Analyze this event photo and return ONLY a JSON object, no other text.
+
+Event context: ${eventContext}
+
+Return this exact JSON structure with numbers 0-10:
+{"sharpness":7,"composition":8,"brandRelevance":6,"humanEngagement":9,"overall":7.5,"reasoning":"Clear sharp image showing engaged crowd","description":"Energetic crowd at brand event stage"}`;
+
     const result = await model.generateContent([
       { inlineData: { data: base64Image, mimeType: mimeType as 'image/jpeg' | 'image/png' | 'image/webp' } },
       prompt,
     ]);
-    const text = result.response.text();
-    return JSON.parse(extractJSON(text));
+
+    return parseGeminiJSON(result.response.text());
   });
 }
 
 export async function generateJSON<T>(
   systemPrompt: string,
   userPrompt: string,
-  maxTokens = 1000
+  maxTokens = 1200
 ): Promise<T> {
   return withRetry(async (modelName) => {
     const model = getClient().getGenerativeModel({
       model: modelName,
       safetySettings,
-      generationConfig: { responseMimeType: 'application/json', maxOutputTokens: maxTokens, temperature: 0.8 },
-      systemInstruction: systemPrompt,
+      generationConfig: { maxOutputTokens: maxTokens, temperature: 0.8 },
+      systemInstruction: systemPrompt + '\n\nIMPORTANT: Return ONLY a valid JSON object. No markdown, no explanation, no ```json fences. Start your response with { and end with }.',
     });
-    const result = await model.generateContent(userPrompt);
-    const text = result.response.text();
-    return JSON.parse(extractJSON(text)) as T;
+
+    const result = await model.generateContent(userPrompt + '\n\nRemember: return ONLY the JSON object, nothing else.');
+    return parseGeminiJSON<T>(result.response.text());
   });
 }
