@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { GeneratedContent, MediaAsset, EventBrief } from '@/types';
 import { getStoryOverlayConfig, generateStoryImageCanvas } from '@/lib/storyImageGenerator';
+import ArchitectureView from '@/components/ArchitectureView';
 
 interface Props {
   content: GeneratedContent;
@@ -18,15 +19,16 @@ interface Props {
   onReset: () => void;
 }
 
-type Tab = 'linkedin' | 'instagram' | 'story' | 'twitter' | 'casestudy' | 'assets';
+type Tab = 'linkedin' | 'instagram' | 'story' | 'twitter' | 'casestudy' | 'assets' | 'architecture';
 
 const tabs: { id: Tab; label: string; icon: React.ElementType; colorClass: string }[] = [
-  { id: 'linkedin',  label: 'LinkedIn',     icon: Linkedin,  colorClass: 'text-blue-400' },
-  { id: 'instagram', label: 'Instagram Post', icon: Instagram, colorClass: 'text-pink-400' },
-  { id: 'story',     label: 'IG Story',     icon: Instagram, colorClass: 'text-orange-400' },
-  { id: 'twitter',   label: 'Twitter/X',    icon: Twitter,   colorClass: 'text-sky-400' },
-  { id: 'casestudy', label: 'Case Study',   icon: FileText,  colorClass: 'text-green-400' },
-  { id: 'assets',    label: 'Asset Scores', icon: BarChart2, colorClass: 'text-indigo-400' },
+  { id: 'linkedin',     label: 'LinkedIn',      icon: Linkedin,  colorClass: 'text-blue-400' },
+  { id: 'instagram',    label: 'Instagram Post', icon: Instagram, colorClass: 'text-pink-400' },
+  { id: 'story',        label: 'IG Story',       icon: Instagram, colorClass: 'text-orange-400' },
+  { id: 'twitter',      label: 'Twitter/X',      icon: Twitter,   colorClass: 'text-sky-400' },
+  { id: 'casestudy',    label: 'Case Study',     icon: FileText,  colorClass: 'text-green-400' },
+  { id: 'assets',       label: 'Asset Scores',   icon: BarChart2, colorClass: 'text-indigo-400' },
+  { id: 'architecture', label: 'Architecture',   icon: Package,   colorClass: 'text-gray-400' },
 ];
 
 // ─── Reusable helpers ────────────────────────────────────────────────────────
@@ -50,6 +52,21 @@ function CopyButton({ text, label = 'Copy' }: { text: string; label?: string }) 
 }
 
 function AssetImg({ asset, className = '' }: { asset: MediaAsset; className?: string }) {
+  if (!asset?.base64) {
+    // Demo mode placeholder — gradient based on asset id
+    const colors = [
+      'from-indigo-600 to-purple-700',
+      'from-pink-600 to-rose-700',
+      'from-orange-500 to-amber-600',
+      'from-sky-600 to-blue-700',
+    ];
+    const idx = asset?.id ? parseInt(asset.id.replace(/\D/g, '').slice(-1) || '0') % colors.length : 0;
+    return (
+      <div className={`w-full h-full bg-gradient-to-br ${colors[idx]} flex items-center justify-center ${className}`}>
+        <span className="text-white/30 text-xs font-medium">Demo Image</span>
+      </div>
+    );
+  }
   // eslint-disable-next-line @next/next/no-img-element
   return (
     <img
@@ -904,6 +921,9 @@ export default function ResultsDashboard({ content, assets, brief, onReset }: Pr
             )}
             {activeTab === 'assets' && (
               <AssetScoresTab content={content} assets={assets} />
+            )}
+            {activeTab === 'architecture' && (
+              <ArchitectureView />
             )}
           </motion.div>
         </AnimatePresence>
