@@ -1,4 +1,4 @@
-# StepOne Content Intelligence Engine — Submission Package
+﻿# StepOne Content Intelligence Engine — Submission Package
 
 **Team:** [Your Team Name]  
 **Challenge:** Content & Design Engine  
@@ -269,7 +269,7 @@ vercel --prod
 
 ## 🙏 Acknowledgments
 
-Built for the **StepOne AI Buildathon 2025** — Content & Design Engine Challenge.
+Built for the **StepOne AI Buildathon 2026** — Content & Design Engine Challenge.
 
 Special thanks to the StepOne team for defining a real-world problem worth solving.
 

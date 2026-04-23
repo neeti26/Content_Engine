@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
 import { EventBrief, MediaAsset, GeneratedContent } from '@/types';
@@ -43,7 +43,7 @@ export default function Home() {
 
   const handleDemoMode = () => {
     setBrief({
-      eventName: 'TechSummit 2025', brandName: 'StepOne', eventType: 'Corporate Conference',
+      eventName: 'TechSummit 2026', brandName: 'StepOne', eventType: 'Corporate Conference',
       location: 'Mumbai, India', date: '2025-04-15',
       keyHighlights: '500+ attendees, AI keynote with standing ovation, product demo, 8 partnerships formed, 94% satisfaction',
       targetAudience: 'Marketing leaders and CMOs', tone: 'professional',

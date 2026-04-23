@@ -1,6 +1,6 @@
-# StepOne Content Intelligence Engine
+﻿# StepOne Content Intelligence Engine
 
-> **Built for StepOne AI Buildathon 2025** — Content & Design Engine Challenge
+> **Built for StepOne AI Buildathon 2026** — Content & Design Engine Challenge
 
 An AI-powered pipeline that transforms raw event media into publish-ready marketing assets across LinkedIn, Instagram, Instagram Stories, and a structured Case Study — with zero manual intervention.
 
@@ -141,7 +141,7 @@ src/
 
 ## 👥 Team
 
-Built for the StepOne AI Buildathon 2025.
+Built for the StepOne AI Buildathon 2026.
 
 ---
 

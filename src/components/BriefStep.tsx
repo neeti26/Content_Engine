@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
@@ -80,7 +80,7 @@ export default function BriefStep({ assetCount, onSubmit, onBack }: Props) {
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-white/40 uppercase tracking-wider">Event Name <span className="text-indigo-400">*</span></label>
                 <input value={form.eventName} onChange={e => set('eventName', e.target.value)}
-                  placeholder="e.g. TechSummit 2025" className="input-field w-full rounded-xl px-4 py-3 text-sm" />
+                  placeholder="e.g. TechSummit 2026" className="input-field w-full rounded-xl px-4 py-3 text-sm" />
               </div>
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-white/40 uppercase tracking-wider">Brand Name <span className="text-indigo-400">*</span></label>

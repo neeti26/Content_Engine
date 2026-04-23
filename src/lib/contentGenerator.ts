@@ -1,4 +1,4 @@
-import {
+﻿import {
   EventBrief, MediaAsset, LinkedInContent, InstagramPostContent,
   InstagramStoryContent, TwitterContent, CaseStudyContent,
 } from '@/types';
@@ -136,7 +136,7 @@ Highlights: ${brief.keyHighlights}. Tone: ${brief.tone}
 
 Return this JSON:
 {
-  "statusText": "short punchy status under 100 chars — e.g. Just wrapped TechSummit 2025. Mind = blown. 🔥",
+  "statusText": "short punchy status under 100 chars — e.g. Just wrapped TechSummit 2026. Mind = blown. 🔥",
   "caption": "personal message to share with contacts, 2-3 sentences, conversational, no hashtags, max 500 chars",
   "selectedImageId": "${asset.id}"
 }`,

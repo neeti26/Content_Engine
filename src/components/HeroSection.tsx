@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
@@ -58,7 +58,7 @@ export default function HeroSection({ onStart, onDemo, apiKey, onApiKeyChange }:
             <span className="hidden sm:inline">Gemini AI · Free Tier</span>
           </div>
           <span className="hidden md:block text-xs text-white/20 bg-white/5 border border-white/8 px-3 py-1.5 rounded-full">
-            StepOne AI Buildathon 2025
+            StepOne AI Buildathon 2026
           </span>
         </div>
       </nav>
