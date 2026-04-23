@@ -50,7 +50,7 @@ export default function HeroSection({ onStart, onDemo, apiKey, onApiKeyChange }:
         <div className="flex items-center gap-2">
           <span className="hidden sm:flex items-center gap-1.5 text-xs text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 px-3 py-1.5 rounded-full">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            GPT-4o Vision · Parallel Processing
+            Gemini 1.5 Flash · Parallel Processing
           </span>
           <span className="text-xs text-gray-500 bg-gray-800/80 px-3 py-1.5 rounded-full border border-white/5">
             StepOne AI Buildathon 2025
@@ -69,7 +69,7 @@ export default function HeroSection({ onStart, onDemo, apiKey, onApiKeyChange }:
           {/* Badge */}
           <div className="inline-flex items-center gap-2 bg-indigo-600/10 border border-indigo-500/25 rounded-full px-5 py-2 mb-7">
             <Brain className="w-4 h-4 text-indigo-400" />
-            <span className="text-indigo-300 text-sm font-semibold">All 5 outputs generated in parallel · ~60 seconds total</span>
+            <span className="text-indigo-300 text-sm font-semibold">Gemini 1.5 Flash · All 5 outputs in parallel · ~15 seconds</span>
             <Sparkles className="w-4 h-4 text-indigo-400" />
           </div>
 
@@ -94,7 +94,7 @@ export default function HeroSection({ onStart, onDemo, apiKey, onApiKeyChange }:
                 type={showKey ? 'text' : 'password'}
                 value={apiKey}
                 onChange={(e) => onApiKeyChange(e.target.value)}
-                placeholder="Paste your OpenAI API key (sk-...)"
+                placeholder="Paste your Gemini API key (free at aistudio.google.com)"
                 className="w-full bg-gray-900 border border-gray-700 rounded-xl pl-10 pr-10 py-3 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-indigo-500 transition-colors"
               />
               <button
@@ -104,7 +104,7 @@ export default function HeroSection({ onStart, onDemo, apiKey, onApiKeyChange }:
                 {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
-            <p className="text-gray-700 text-xs mt-1.5 text-center">Key stays in your browser · never stored · or use Demo Mode below</p>
+            <p className="text-gray-700 text-xs mt-1.5 text-center">Free key at <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="text-indigo-500 hover:text-indigo-400 underline">aistudio.google.com</a> · stays in your browser · or use Demo Mode</p>
           </div>
 
           {/* CTAs */}

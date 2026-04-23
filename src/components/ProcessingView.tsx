@@ -2,16 +2,26 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle, Loader2, XCircle, Zap, Brain, Sparkles } from 'lucide-react';
-import { ProcessingStatus, GeneratedContent } from '@/types';
+import { CheckCircle, Loader2, Zap, Brain, Sparkles } from 'lucide-react';
+import { GeneratedContent } from '@/types';
 
 interface Props {
-  jobId: string;
   onComplete: (content: GeneratedContent) => void;
-  onError: () => void;
+  onError: (msg: string) => void;
+  // Pass the promise directly — no polling needed
+  processingPromise: Promise<GeneratedContent>;
 }
 
-const POLL_INTERVAL = 1800;
+const steps = [
+  { label: 'Scoring all photos with AI Vision', pct: 5 },
+  { label: 'Selecting best asset per platform', pct: 35 },
+  { label: 'Generating LinkedIn post', pct: 50 },
+  { label: 'Generating Instagram caption', pct: 60 },
+  { label: 'Generating Story overlay', pct: 70 },
+  { label: 'Generating Twitter/X thread', pct: 78 },
+  { label: 'Generating case study draft', pct: 86 },
+  { label: 'Packaging all outputs', pct: 96 },
+];
 
 const insights = [
   { emoji: '🔍', text: 'Analyzing sharpness, composition, and brand relevance of each photo...' },
@@ -24,152 +34,148 @@ const insights = [
   { emoji: '✨', text: 'Finalizing your publish-ready content package...' },
 ];
 
-const outputLabels = ['LinkedIn Post', 'Instagram Post', 'IG Story', 'Twitter Thread', 'Case Study'];
-
-export default function ProcessingView({ jobId, onComplete, onError }: Props) {
-  const [status, setStatus] = useState<ProcessingStatus | null>(null);
+export default function ProcessingView({ onComplete, onError, processingPromise }: Props) {
+  const [progress, setProgress] = useState(0);
+  const [currentStep, setCurrentStep] = useState('Initializing...');
+  const [doneSteps, setDoneSteps] = useState<string[]>([]);
   const [insightIdx, setInsightIdx] = useState(0);
-  const pollRef = useRef<NodeJS.Timeout | null>(null);
-  const insightRef = useRef<NodeJS.Timeout | null>(null);
+  const stepTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const insightTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const stepIdxRef = useRef(0);
 
+  // Animate through steps automatically
   useEffect(() => {
-    insightRef.current = setInterval(() => {
+    const advance = () => {
+      const idx = stepIdxRef.current;
+      if (idx < steps.length) {
+        const s = steps[idx];
+        setCurrentStep(s.label);
+        setProgress(s.pct);
+        setDoneSteps(steps.slice(0, idx).map((x) => x.label));
+        stepIdxRef.current = idx + 1;
+        // Space steps out — faster at start, slower near end
+        const delay = idx < 2 ? 4000 : idx < 5 ? 5000 : 7000;
+        stepTimerRef.current = setTimeout(advance, delay);
+      }
+    };
+    stepTimerRef.current = setTimeout(advance, 800);
+
+    insightTimerRef.current = setInterval(() => {
       setInsightIdx((i) => (i + 1) % insights.length);
     }, 3500);
-    return () => { if (insightRef.current) clearInterval(insightRef.current); };
+
+    return () => {
+      if (stepTimerRef.current) clearTimeout(stepTimerRef.current);
+      if (insightTimerRef.current) clearInterval(insightTimerRef.current);
+    };
   }, []);
 
+  // Wait for the actual result
   useEffect(() => {
-    const poll = async () => {
-      try {
-        const res = await fetch(`/api/status/${jobId}`);
-        if (!res.ok) return;
-        const data = await res.json() as ProcessingStatus;
-        setStatus(data);
-        if (data.status === 'done' && data.result) {
-          if (pollRef.current) clearInterval(pollRef.current);
-          setTimeout(() => onComplete(data.result!), 600);
-        } else if (data.status === 'error') {
-          if (pollRef.current) clearInterval(pollRef.current);
-          setTimeout(onError, 2000);
-        }
-      } catch { /* ignore */ }
-    };
-    poll();
-    pollRef.current = setInterval(poll, POLL_INTERVAL);
-    return () => { if (pollRef.current) clearInterval(pollRef.current); };
-  }, [jobId, onComplete, onError]);
+    processingPromise
+      .then((result) => {
+        if (stepTimerRef.current) clearTimeout(stepTimerRef.current);
+        setProgress(100);
+        setCurrentStep('Done!');
+        setDoneSteps(steps.map((s) => s.label));
+        setTimeout(() => onComplete(result), 600);
+      })
+      .catch((err) => {
+        if (stepTimerRef.current) clearTimeout(stepTimerRef.current);
+        onError(err instanceof Error ? err.message : 'Processing failed');
+      });
+  }, [processingPromise, onComplete, onError]);
 
-  const progress = status?.progress ?? 0;
   const insight = insights[insightIdx];
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6 py-20 bg-gray-950 relative overflow-hidden">
-      {/* Background orbs */}
-      <div className="orb w-[500px] h-[500px] bg-brand-600 top-[-150px] left-[-150px]" />
-      <div className="orb w-[300px] h-[300px] bg-orange-500 bottom-[-80px] right-[-80px]" />
+      <div className="absolute w-[500px] h-[500px] rounded-full bg-indigo-600/8 blur-[120px] top-[-150px] left-[-150px] pointer-events-none" />
+      <div className="absolute w-[300px] h-[300px] rounded-full bg-orange-500/6 blur-[100px] bottom-[-80px] right-[-80px] pointer-events-none" />
 
       <motion.div
-        initial={{ opacity: 0, y: 30 }}
+        initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="relative z-10 w-full max-w-xl"
+        className="relative z-10 w-full max-w-lg"
       >
-        {/* Animated brain icon */}
+        {/* Animated icon */}
         <div className="flex justify-center mb-8">
           <div className="relative">
             <motion.div
-              animate={{ scale: [1, 1.05, 1] }}
-              transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-              className="w-24 h-24 rounded-3xl bg-gradient-to-br from-brand-600/30 to-brand-800/30 border border-brand-500/30 flex items-center justify-center glow"
+              animate={{ scale: [1, 1.04, 1] }}
+              transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
+              className="w-20 h-20 rounded-2xl flex items-center justify-center"
+              style={{ background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.25)', boxShadow: '0 0 40px rgba(99,102,241,0.2)' }}
             >
-              <Brain className="w-12 h-12 text-brand-400" />
+              <Brain className="w-10 h-10 text-indigo-400" />
             </motion.div>
             <motion.div
               animate={{ rotate: 360 }}
               transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
-              className="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-gradient-to-br from-brand-500 to-accent-500 flex items-center justify-center"
+              className="absolute -top-1.5 -right-1.5 w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center"
             >
-              <Zap className="w-4 h-4 text-white" />
+              <Zap className="w-3.5 h-3.5 text-white" />
             </motion.div>
           </div>
         </div>
 
-        <h1 className="text-3xl font-black text-white text-center mb-2">
-          AI is building your content
-        </h1>
-        <p className="text-gray-500 text-center mb-8 text-sm">
-          GPT-4o Vision is analyzing your photos and generating 5 platform-ready outputs
-        </p>
+        <h1 className="text-2xl font-black text-white text-center mb-1.5">AI is building your content</h1>
+        <p className="text-gray-500 text-sm text-center mb-8">Gemini 1.5 Flash · Parallel processing · ~15-30 seconds</p>
 
         {/* Progress bar */}
         <div className="mb-6">
-          <div className="flex justify-between text-sm mb-2">
-            <span className="text-gray-400 text-xs truncate max-w-[70%]">
-              {status?.currentStep ?? 'Initializing pipeline...'}
-            </span>
-            <span className="text-brand-400 font-black text-sm">{progress}%</span>
+          <div className="flex justify-between text-xs mb-2">
+            <span className="text-gray-400 truncate max-w-[75%]">{currentStep}</span>
+            <span className="text-indigo-400 font-black">{progress}%</span>
           </div>
-          <div className="h-2.5 bg-gray-800 rounded-full overflow-hidden">
+          <div className="h-2 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)' }}>
             <motion.div
               className="h-full rounded-full"
               style={{ background: 'linear-gradient(90deg, #4f46e5, #818cf8, #f97316)' }}
-              initial={{ width: '0%' }}
               animate={{ width: `${progress}%` }}
-              transition={{ duration: 0.6, ease: 'easeOut' }}
+              transition={{ duration: 0.8, ease: 'easeOut' }}
             />
           </div>
         </div>
 
-        {/* Steps list */}
-        {status?.steps && status.steps.length > 0 && (
-          <div className="glass rounded-2xl p-5 mb-6 space-y-2.5">
-            {status.steps.map((step, i) => (
+        {/* Steps */}
+        <div className="rounded-2xl p-5 mb-5 space-y-2.5" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}>
+          {steps.map((step) => {
+            const isDone = doneSteps.includes(step.label);
+            const isActive = currentStep === step.label;
+            return (
               <motion.div
-                key={i}
-                initial={{ opacity: 0, x: -8 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: i * 0.04 }}
+                key={step.label}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
                 className="flex items-center gap-3"
               >
-                <div className="flex-shrink-0">
-                  {step.status === 'done' && <CheckCircle className="w-4 h-4 text-emerald-400" />}
-                  {step.status === 'processing' && <Loader2 className="w-4 h-4 text-brand-400 animate-spin" />}
-                  {step.status === 'error' && <XCircle className="w-4 h-4 text-red-400" />}
-                  {step.status === 'pending' && <div className="w-4 h-4 rounded-full border border-gray-700" />}
+                <div className="flex-shrink-0 w-4 h-4 flex items-center justify-center">
+                  {isDone
+                    ? <CheckCircle className="w-4 h-4 text-emerald-400" />
+                    : isActive
+                    ? <Loader2 className="w-4 h-4 text-indigo-400 animate-spin" />
+                    : <div className="w-3 h-3 rounded-full" style={{ border: '1px solid rgba(255,255,255,0.12)' }} />
+                  }
                 </div>
-                <span className={`text-xs flex-1 ${
-                  step.status === 'done' ? 'text-gray-400 line-through decoration-gray-600' :
-                  step.status === 'processing' ? 'text-white font-semibold' : 'text-gray-700'
-                }`}>
-                  {step.step}
+                <span className={`text-xs ${isDone ? 'text-gray-500 line-through decoration-gray-700' : isActive ? 'text-white font-semibold' : 'text-gray-700'}`}>
+                  {step.label}
                 </span>
-                {step.detail && (
-                  <span className="text-gray-700 text-xs">{step.detail}</span>
-                )}
               </motion.div>
-            ))}
-          </div>
-        )}
+            );
+          })}
+        </div>
 
-        {/* Output preview chips */}
-        <div className="flex flex-wrap gap-2 justify-center mb-6">
-          {outputLabels.map((label, i) => {
+        {/* Output chips */}
+        <div className="flex flex-wrap gap-2 justify-center mb-5">
+          {['LinkedIn', 'Instagram', 'IG Story', 'Twitter/X', 'Case Study'].map((label, i) => {
             const done = progress >= (i + 1) * 18;
             return (
-              <motion.span
-                key={label}
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.3 + i * 0.1 }}
-                className={`text-xs px-3 py-1.5 rounded-full border transition-all ${
-                  done
-                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
-                    : 'bg-gray-800/50 border-gray-700 text-gray-600'
-                }`}
-              >
+              <span key={label} className={`text-xs px-3 py-1.5 rounded-full border transition-all ${done ? 'text-emerald-400 border-emerald-500/30' : 'text-gray-700 border-gray-800'}`}
+                style={{ background: done ? 'rgba(52,211,153,0.08)' : 'rgba(255,255,255,0.02)' }}>
                 {done ? '✓ ' : ''}{label}
-              </motion.span>
+              </span>
             );
           })}
         </div>
@@ -178,29 +184,18 @@ export default function ProcessingView({ jobId, onComplete, onError }: Props) {
         <AnimatePresence mode="wait">
           <motion.div
             key={insightIdx}
-            initial={{ opacity: 0, y: 8 }}
+            initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.35 }}
-            className="flex items-center gap-3 glass rounded-xl px-4 py-3"
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.3 }}
+            className="flex items-center gap-3 rounded-xl px-4 py-3"
+            style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
           >
-            <span className="text-xl flex-shrink-0">{insight.emoji}</span>
+            <span className="text-lg flex-shrink-0">{insight.emoji}</span>
             <p className="text-gray-500 text-xs leading-relaxed">{insight.text}</p>
-            <Sparkles className="w-3.5 h-3.5 text-brand-600 flex-shrink-0" />
+            <Sparkles className="w-3.5 h-3.5 text-indigo-700 flex-shrink-0" />
           </motion.div>
         </AnimatePresence>
-
-        {/* Error */}
-        {status?.status === 'error' && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="mt-5 bg-red-500/10 border border-red-500/20 rounded-xl p-4 text-center"
-          >
-            <p className="text-red-400 font-semibold text-sm">Processing failed</p>
-            <p className="text-gray-500 text-xs mt-1">{status.error}</p>
-          </motion.div>
-        )}
       </motion.div>
     </div>
   );

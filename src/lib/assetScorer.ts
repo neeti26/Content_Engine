@@ -1,13 +1,13 @@
 import { MediaAsset, AssetScore } from '@/types';
-import { scoreAndDescribeImage, generateJSON } from './openai';
+import { scoreAndDescribeImage, generateJSON } from './gemini';
 
-/** Score all assets in PARALLEL — 10x faster than sequential */
 export async function scoreAllAssets(
   assets: MediaAsset[],
   eventContext: string
 ): Promise<Array<MediaAsset & { description: string }>> {
+  // All images scored in parallel — Gemini Flash handles this fast
   const results = await Promise.allSettled(
-    assets.map((asset) => scoreAndDescribeImage(asset.base64, asset.mimeType, eventContext))
+    assets.map((a) => scoreAndDescribeImage(a.base64, a.mimeType, eventContext))
   );
 
   return assets.map((asset, i) => {
@@ -16,7 +16,7 @@ export async function scoreAllAssets(
       const v = r.value;
       return {
         ...asset,
-        description: v.description ?? '',
+        description: v.description ?? 'Event photo',
         score: {
           sharpness: clamp(v.sharpness, 0, 10),
           composition: clamp(v.composition, 0, 10),
@@ -27,7 +27,7 @@ export async function scoreAllAssets(
         } as AssetScore,
       };
     }
-    return { ...asset, description: '', score: defaultScore() };
+    return { ...asset, description: 'Event photo', score: defaultScore() };
   });
 }
 
@@ -35,12 +35,8 @@ export async function selectBestAssets(
   assets: Array<MediaAsset & { description?: string }>,
   eventContext: string
 ): Promise<{
-  linkedin: string;
-  instagramPost: string;
-  instagramStory: string;
-  twitter: string;
-  caseStudy: string[];
-  rationale: Record<string, string>;
+  linkedin: string; instagramPost: string; instagramStory: string;
+  twitter: string; caseStudy: string[]; rationale: Record<string, string>;
 }> {
   const scored = [...assets]
     .filter((a) => a.score)
@@ -53,30 +49,22 @@ export async function selectBestAssets(
 
   const summaries = scored.slice(0, 10).map((a) => ({
     id: a.id,
-    name: a.name,
-    description: (a as MediaAsset & { description?: string }).description ?? '',
-    score: a.score,
+    desc: (a as MediaAsset & { description?: string }).description ?? '',
+    score: a.score?.overall?.toFixed(1),
+    sharpness: a.score?.sharpness?.toFixed(1),
+    engagement: a.score?.humanEngagement?.toFixed(1),
   }));
 
   const result = await generateJSON<{
     linkedin: string; instagramPost: string; instagramStory: string;
     twitter: string; caseStudy: string[]; rationale: Record<string, string>;
   }>(
-    'You are a marketing strategist. Select the best image ID for each platform.',
+    'Marketing strategist. Select best image ID per platform. Return JSON only.',
     `Event: ${eventContext}
-
-Assets (sorted best→worst):
-${JSON.stringify(summaries, null, 2)}
-
-Rules:
-- linkedin: professional, brand-forward, high overall score
-- instagramPost: visually striking, colorful, high engagement score
-- instagramStory: bold, works cropped to 9:16, high composition score
-- twitter: dynamic, shareable, tells a story instantly
-- caseStudy: pick 3-4 diverse images showing different aspects
-
-Return JSON:
-{"linkedin":"<id>","instagramPost":"<id>","instagramStory":"<id>","twitter":"<id>","caseStudy":["<id>","<id>","<id>"],"rationale":{"linkedin":"<why>","instagramPost":"<why>","instagramStory":"<why>","twitter":"<why>","caseStudy":"<why>"}}`
+Assets (best→worst): ${JSON.stringify(summaries)}
+Rules: linkedin=professional+brand, instagramPost=colorful+engaging, instagramStory=bold+vertical, twitter=dynamic+shareable, caseStudy=3-4 diverse
+Return: {"linkedin":"<id>","instagramPost":"<id>","instagramStory":"<id>","twitter":"<id>","caseStudy":["<id>","<id>","<id>"],"rationale":{"linkedin":"<why>","instagramPost":"<why>","instagramStory":"<why>","twitter":"<why>","caseStudy":"<why>"}}`,
+    400
   );
 
   return {

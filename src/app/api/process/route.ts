@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { v4 as uuidv4 } from 'uuid';
 import { EventBrief, MediaAsset } from '@/types';
-import { createJob, updateJob, addStep } from '@/lib/jobStore';
 import { runPipeline } from '@/lib/pipeline';
 
 export const maxDuration = 300;
@@ -18,27 +16,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Maximum 20 images allowed' }, { status: 400 });
     }
 
-    // Allow API key from request body (for demo/judge use without .env)
+    // Accept Gemini API key from request body
     if (apiKey) {
-      process.env.OPENAI_API_KEY = apiKey;
+      process.env.GEMINI_API_KEY = apiKey;
     }
 
-    if (!process.env.OPENAI_API_KEY) {
-      return NextResponse.json({ error: 'OpenAI API key not configured. Add it in the app or set OPENAI_API_KEY env var.' }, { status: 400 });
+    if (!process.env.GEMINI_API_KEY) {
+      return NextResponse.json(
+        { error: 'Gemini API key not set. Get a free key at https://aistudio.google.com/app/apikey and paste it in the input.' },
+        { status: 400 }
+      );
     }
 
-    const jobId = uuidv4();
-    createJob(jobId);
-    addStep(jobId, `Processing ${assets.length} photos`, 'done');
-
-    runPipeline(jobId, brief, assets).catch((err) => {
-      console.error(`Pipeline error [${jobId}]:`, err);
-      updateJob(jobId, { status: 'error', error: err instanceof Error ? err.message : String(err) });
-    });
-
-    return NextResponse.json({ jobId }, { status: 202 });
+    const result = await runPipeline(brief, assets);
+    return NextResponse.json({ result }, { status: 200 });
   } catch (err) {
-    console.error('Process API error:', err);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    console.error('Pipeline error:', err);
+    return NextResponse.json({ error: err instanceof Error ? err.message : 'Processing failed' }, { status: 500 });
   }
 }
