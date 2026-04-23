@@ -23,6 +23,15 @@ const safetySettings = [
   { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
 ];
 
+/** Strip markdown fences and extract clean JSON from Gemini response */
+function extractJSON(text: string): string {
+  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (fenced) return fenced[1].trim();
+  const obj = text.match(/\{[\s\S]*\}/);
+  if (obj) return obj[0];
+  return text.trim();
+}
+
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 async function withRetry<T>(fn: (model: string) => Promise<T>): Promise<T> {
@@ -69,7 +78,7 @@ export async function scoreAndDescribeImage(
       prompt,
     ]);
     const text = result.response.text();
-    return JSON.parse(text.match(/\{[\s\S]*\}/)?.[0] ?? text);
+    return JSON.parse(extractJSON(text));
   });
 }
 
@@ -87,6 +96,6 @@ export async function generateJSON<T>(
     });
     const result = await model.generateContent(userPrompt);
     const text = result.response.text();
-    return JSON.parse(text.match(/\{[\s\S]*\}/)?.[0] ?? text) as T;
+    return JSON.parse(extractJSON(text)) as T;
   });
 }
