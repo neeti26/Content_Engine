@@ -20,8 +20,8 @@ const safetySettings = [
 ];
 
 /**
- * Score + describe an image in ONE call using Gemini Flash Vision.
- * Flash is 3-5x faster than GPT-4o and free tier supports 15 req/min.
+ * Score + describe an image in ONE call using Gemini 2.0 Flash Vision.
+ * Fast, free tier, vision support.
  */
 export async function scoreAndDescribeImage(
   base64Image: string,
@@ -32,7 +32,7 @@ export async function scoreAndDescribeImage(
   humanEngagement: number; overall: number; reasoning: string; description: string;
 }> {
   const model = getClient().getGenerativeModel({
-    model: 'gemini-1.5-flash',
+    model: 'gemini-2.0-flash',
     safetySettings,
     generationConfig: { responseMimeType: 'application/json', maxOutputTokens: 300, temperature: 0.2 },
   });
@@ -56,7 +56,7 @@ Score this event photo (0-10 each) and describe it. JSON only:
 }
 
 /**
- * Generate JSON content using Gemini Flash (text only — very fast).
+ * Generate JSON content using Gemini 2.0 Flash (text only — very fast).
  */
 export async function generateJSON<T>(
   systemPrompt: string,
@@ -64,7 +64,7 @@ export async function generateJSON<T>(
   maxTokens = 1200
 ): Promise<T> {
   const model = getClient().getGenerativeModel({
-    model: 'gemini-1.5-flash',
+    model: 'gemini-2.0-flash',
     safetySettings,
     generationConfig: {
       responseMimeType: 'application/json',

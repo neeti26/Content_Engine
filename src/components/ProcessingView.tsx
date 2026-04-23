@@ -121,7 +121,7 @@ export default function ProcessingView({ onComplete, onError, processingPromise 
         </div>
 
         <h1 className="text-2xl font-black text-white text-center mb-1.5">AI is building your content</h1>
-        <p className="text-gray-500 text-sm text-center mb-8">Gemini 1.5 Flash · Parallel processing · ~15-30 seconds</p>
+        <p className="text-gray-500 text-sm text-center mb-8">Gemini 2.0 Flash · Parallel processing · ~15-20 seconds</p>
 
         {/* Progress bar */}
         <div className="mb-6">

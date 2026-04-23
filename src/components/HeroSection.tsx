@@ -50,7 +50,7 @@ export default function HeroSection({ onStart, onDemo, apiKey, onApiKeyChange }:
         <div className="flex items-center gap-2">
           <span className="hidden sm:flex items-center gap-1.5 text-xs text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 px-3 py-1.5 rounded-full">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            Gemini 1.5 Flash · Parallel Processing
+            Gemini 2.0 Flash · Parallel Processing
           </span>
           <span className="text-xs text-gray-500 bg-gray-800/80 px-3 py-1.5 rounded-full border border-white/5">
             StepOne AI Buildathon 2025
@@ -69,7 +69,7 @@ export default function HeroSection({ onStart, onDemo, apiKey, onApiKeyChange }:
           {/* Badge */}
           <div className="inline-flex items-center gap-2 bg-indigo-600/10 border border-indigo-500/25 rounded-full px-5 py-2 mb-7">
             <Brain className="w-4 h-4 text-indigo-400" />
-            <span className="text-indigo-300 text-sm font-semibold">Gemini 1.5 Flash · All 5 outputs in parallel · ~15 seconds</span>
+            <span className="text-indigo-300 text-sm font-semibold">Gemini 2.0 Flash · All 5 outputs in parallel · ~15 seconds</span>
             <Sparkles className="w-4 h-4 text-indigo-400" />
           </div>
 
