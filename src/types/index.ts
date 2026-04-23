@@ -33,9 +33,16 @@ export interface GeneratedContent {
   instagramPost: InstagramPostContent;
   instagramStory: InstagramStoryContent;
   twitter: TwitterContent;
+  whatsapp: WhatsAppContent;
   caseStudy: CaseStudyContent;
   selectedAssets: SelectedAssets;
   processingLog: ProcessingStep[];
+}
+
+export interface WhatsAppContent {
+  statusText: string;
+  caption: string;
+  selectedImageId: string;
 }
 
 export interface LinkedInContent {
@@ -92,6 +99,7 @@ export interface SelectedAssets {
   instagramPost: string;
   instagramStory: string;
   twitter: string;
+  whatsapp: string;
   caseStudy: string[];
   selectionRationale: Record<string, string>;
 }

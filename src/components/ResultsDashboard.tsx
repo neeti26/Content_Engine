@@ -6,11 +6,12 @@ import {
   Linkedin, Instagram, FileText, RotateCcw, Copy, Check,
   Download, Star, ChevronDown, ChevronUp, Zap, BarChart2,
   Twitter, TrendingUp, Award, Users, Calendar, MapPin,
-  Image as ImageIcon, BookOpen, Package
+  Image as ImageIcon, BookOpen, Package, Share2, MessageCircle
 } from 'lucide-react';
 import { GeneratedContent, MediaAsset, EventBrief } from '@/types';
 import { getStoryOverlayConfig, generateStoryImageCanvas } from '@/lib/storyImageGenerator';
 import ArchitectureView from '@/components/ArchitectureView';
+import PublishPanel from '@/components/PublishPanel';
 
 interface Props {
   content: GeneratedContent;
@@ -19,14 +20,15 @@ interface Props {
   onReset: () => void;
 }
 
-type Tab = 'linkedin' | 'instagram' | 'story' | 'twitter' | 'casestudy' | 'assets' | 'architecture';
+type Tab = 'linkedin' | 'instagram' | 'story' | 'twitter' | 'whatsapp' | 'casestudy' | 'assets' | 'architecture';
 
 const tabs: { id: Tab; label: string; icon: React.ElementType; colorClass: string }[] = [
   { id: 'linkedin',     label: 'LinkedIn',      icon: Linkedin,  colorClass: 'text-blue-400' },
   { id: 'instagram',    label: 'Instagram Post', icon: Instagram, colorClass: 'text-pink-400' },
   { id: 'story',        label: 'IG Story',       icon: Instagram, colorClass: 'text-orange-400' },
   { id: 'twitter',      label: 'Twitter/X',      icon: Twitter,   colorClass: 'text-sky-400' },
-  { id: 'casestudy',    label: 'Case Study',     icon: FileText,  colorClass: 'text-green-400' },
+  { id: 'whatsapp',     label: 'WhatsApp',       icon: MessageCircle, colorClass: 'text-green-400' },
+  { id: 'casestudy',    label: 'Case Study',     icon: FileText,  colorClass: 'text-emerald-400' },
   { id: 'assets',       label: 'Asset Scores',   icon: BarChart2, colorClass: 'text-indigo-400' },
   { id: 'architecture', label: 'Architecture',   icon: Package,   colorClass: 'text-gray-400' },
 ];
@@ -733,6 +735,7 @@ function AssetScoresTab({
 
 export default function ResultsDashboard({ content, assets, brief, onReset }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>('linkedin');
+  const [showPublish, setShowPublish] = useState(false);
 
   const buildExportText = useCallback(() => {
     const li = content.linkedin;
@@ -841,12 +844,20 @@ export default function ResultsDashboard({ content, assets, brief, onReset }: Pr
 
         <div className="ml-auto flex items-center gap-2">
           <button
+            onClick={() => setShowPublish(true)}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all text-white"
+            style={{ background: 'linear-gradient(135deg, #22c55e, #16a34a)', boxShadow: '0 0 20px rgba(34,197,94,0.3)' }}
+          >
+            <Share2 className="w-4 h-4" />
+            <span className="hidden sm:inline">Publish & Share</span>
+          </button>
+          <button
             onClick={handleExportAll}
             className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all text-gray-300 hover:text-white border"
             style={{ borderColor: 'rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)' }}
           >
             <Download className="w-4 h-4" />
-            <span className="hidden sm:inline">Export All</span>
+            <span className="hidden sm:inline">Export</span>
           </button>
           <button
             onClick={onReset}
@@ -922,12 +933,106 @@ export default function ResultsDashboard({ content, assets, brief, onReset }: Pr
             {activeTab === 'assets' && (
               <AssetScoresTab content={content} assets={assets} />
             )}
+            {activeTab === 'whatsapp' && (
+              <WhatsAppTab content={content} assets={assets} />
+            )}
             {activeTab === 'architecture' && (
               <ArchitectureView />
             )}
           </motion.div>
         </AnimatePresence>
       </div>
+
+      {/* Publish Panel Modal */}
+      <AnimatePresence>
+        {showPublish && (
+          <PublishPanel
+            content={content}
+            assets={assets}
+            brief={brief}
+            onClose={() => setShowPublish(false)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
+
+// ─── WhatsApp Tab ─────────────────────────────────────────────────────────────
+
+function WhatsAppTab({ content, assets }: { content: GeneratedContent; assets: MediaAsset[] }) {
+  const wa = content.whatsapp;
+  const asset = assets.find(a => a.id === wa?.selectedImageId) ?? assets[0];
+
+  if (!wa) return (
+    <div className="text-center py-20 text-white/30">
+      <p>WhatsApp content not available. Try regenerating.</p>
+    </div>
+  );
+
+  const shareText = `${wa.statusText}\n\n${wa.caption}`;
+  const waUrl = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Left: image */}
+      <div className="space-y-4">
+        <GlassCard className="p-0 overflow-hidden">
+          <div className="aspect-square w-full bg-gray-900 overflow-hidden rounded-2xl">
+            {asset?.base64
+              // eslint-disable-next-line @next/next/no-img-element
+              ? <img src={`data:${asset.mimeType};base64,${asset.base64}`} alt="" className="w-full h-full object-cover" />
+              : <div className="w-full h-full flex items-center justify-center text-white/10 text-sm">Demo Image</div>
+            }
+          </div>
+        </GlassCard>
+        <a
+          href={waUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="flex items-center justify-center gap-2 w-full py-3.5 rounded-2xl font-bold text-white transition-all"
+          style={{ background: 'linear-gradient(135deg, #22c55e, #16a34a)', boxShadow: '0 0 25px rgba(34,197,94,0.3)' }}
+        >
+          <MessageCircle className="w-5 h-5" />
+          Share on WhatsApp
+        </a>
+        <p className="text-white/25 text-xs text-center">Opens WhatsApp with message pre-filled. Share to Status or contacts.</p>
+      </div>
+
+      {/* Right: content */}
+      <div className="space-y-4">
+        <GlassCard>
+          <div className="flex items-center justify-between mb-2">
+            <SectionLabel>Status Text</SectionLabel>
+            <CopyButton text={wa.statusText} />
+          </div>
+          <p className="text-white font-bold text-xl">{wa.statusText}</p>
+          <p className="text-white/30 text-xs mt-1">Short status for WhatsApp Status · max 700 chars</p>
+        </GlassCard>
+
+        <GlassCard>
+          <div className="flex items-center justify-between mb-2">
+            <SectionLabel>Message Caption</SectionLabel>
+            <CopyButton text={wa.caption} />
+          </div>
+          <p className="text-white/70 text-sm leading-relaxed">{wa.caption}</p>
+        </GlassCard>
+
+        <GlassCard>
+          <div className="flex items-center justify-between mb-2">
+            <SectionLabel>Full Message</SectionLabel>
+            <CopyButton text={shareText} label="Copy All" />
+          </div>
+          <p className="text-white/50 text-xs leading-relaxed whitespace-pre-line">{shareText}</p>
+        </GlassCard>
+
+        <div className="p-4 rounded-2xl" style={{ background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.15)' }}>
+          <p className="text-green-300/60 text-xs leading-relaxed">
+            <strong className="text-green-300">How to post as WhatsApp Status:</strong> Tap "Share on WhatsApp" → tap the Status tab → paste the text → attach the downloaded image → post.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+

@@ -52,7 +52,7 @@ export async function selectBestAssets(
   eventContext: string
 ): Promise<{
   linkedin: string; instagramPost: string; instagramStory: string;
-  twitter: string; caseStudy: string[]; rationale: Record<string, string>;
+  twitter: string; whatsapp: string; caseStudy: string[]; rationale: Record<string, string>;
 }> {
   const scored = [...assets]
     .filter((a) => a.score)
@@ -88,12 +88,14 @@ Return this JSON selecting the best asset ID for each platform:
   "instagramPost": "asset_id_here",
   "instagramStory": "asset_id_here",
   "twitter": "asset_id_here",
+  "whatsapp": "asset_id_here",
   "caseStudy": ["asset_id_1","asset_id_2","asset_id_3"],
   "rationale": {
     "linkedin": "why this image",
     "instagramPost": "why this image",
     "instagramStory": "why this image",
     "twitter": "why this image",
+    "whatsapp": "why this image",
     "caseStudy": "why these images"
   }
 }`,
@@ -105,6 +107,7 @@ Return this JSON selecting the best asset ID for each platform:
     instagramPost: result.instagramPost ?? scored[1]?.id ?? scored[0]?.id ?? '',
     instagramStory:result.instagramStory?? scored[2]?.id ?? scored[0]?.id ?? '',
     twitter:       result.twitter       ?? scored[1]?.id ?? scored[0]?.id ?? '',
+    whatsapp:      result.whatsapp      ?? scored[1]?.id ?? scored[0]?.id ?? '',
     caseStudy:     result.caseStudy     ?? scored.slice(0, 4).map((a) => a.id),
     rationale:     result.rationale     ?? {},
   };
