@@ -78,11 +78,26 @@ export async function selectBestAssets(
     linkedin: string; instagramPost: string; instagramStory: string;
     twitter: string; caseStudy: string[]; rationale: Record<string, string>;
   }>(
-    'Marketing strategist. Select best image ID per platform. Return JSON only.',
+    'You are a marketing strategist. Select the best image ID for each platform. Return only JSON.',
     `Event: ${eventContext}
-Assets (best first): ${JSON.stringify(summaries)}
-Return: {"linkedin":"<id>","instagramPost":"<id>","instagramStory":"<id>","twitter":"<id>","caseStudy":["<id>","<id>","<id>"],"rationale":{"linkedin":"<why>","instagramPost":"<why>","instagramStory":"<why>","twitter":"<why>","caseStudy":"<why>"}}`,
-    350
+Assets ranked best to worst: ${JSON.stringify(summaries)}
+
+Return this JSON selecting the best asset ID for each platform:
+{
+  "linkedin": "asset_id_here",
+  "instagramPost": "asset_id_here",
+  "instagramStory": "asset_id_here",
+  "twitter": "asset_id_here",
+  "caseStudy": ["asset_id_1","asset_id_2","asset_id_3"],
+  "rationale": {
+    "linkedin": "why this image",
+    "instagramPost": "why this image",
+    "instagramStory": "why this image",
+    "twitter": "why this image",
+    "caseStudy": "why these images"
+  }
+}`,
+    800
   );
 
   return {
