@@ -32,22 +32,13 @@ Respond with JSON:
   "brandRelevance": <0-10>,
   "humanEngagement": <0-10>,
   "overall": <0-10, weighted average>,
-  "reasoning": "<2-3 sentence explanation of why this image was scored this way>"
+  "reasoning": "<2-3 sentence explanation>"
 }`;
 
   try {
-    const result = await analyzeImageWithVision(
-      asset.base64,
-      asset.mimeType,
-      prompt
-    );
-
-    // Parse JSON from response
+    const result = await analyzeImageWithVision(asset.base64, asset.mimeType, prompt);
     const jsonMatch = result.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      return getDefaultScore();
-    }
-
+    if (!jsonMatch) return getDefaultScore();
     const parsed = JSON.parse(jsonMatch[0]) as ScoringResult;
     return {
       sharpness: clamp(parsed.sharpness, 0, 10),
@@ -69,10 +60,10 @@ export async function selectBestAssets(
   linkedin: string;
   instagramPost: string;
   instagramStory: string;
+  twitter: string;
   caseStudy: string[];
   rationale: Record<string, string>;
 }> {
-  // Sort by overall score
   const scored = assets
     .filter((a) => a.score)
     .sort((a, b) => (b.score?.overall ?? 0) - (a.score?.overall ?? 0));
@@ -83,12 +74,12 @@ export async function selectBestAssets(
       linkedin: ids[0] ?? '',
       instagramPost: ids[1] ?? ids[0] ?? '',
       instagramStory: ids[2] ?? ids[0] ?? '',
+      twitter: ids[1] ?? ids[0] ?? '',
       caseStudy: ids.slice(0, 4),
       rationale: {},
     };
   }
 
-  // Use AI to make final selection decisions
   const assetSummaries = scored.slice(0, Math.min(scored.length, 10)).map((a) => ({
     id: a.id,
     name: a.name,
@@ -99,6 +90,7 @@ export async function selectBestAssets(
     linkedin: string;
     instagramPost: string;
     instagramStory: string;
+    twitter: string;
     caseStudy: string[];
     rationale: Record<string, string>;
   }>(
@@ -109,22 +101,25 @@ Available assets with scores:
 ${JSON.stringify(assetSummaries, null, 2)}
 
 Select the best asset ID for each platform:
-- LinkedIn: needs professional, high-quality, brand-forward image
-- Instagram Post: needs visually striking, engaging, colorful image  
-- Instagram Story: needs vertical-friendly, bold, high-energy image
-- Case Study: needs 3-5 diverse images showing different aspects
+- LinkedIn: professional, high-quality, brand-forward
+- Instagram Post: visually striking, engaging, colorful
+- Instagram Story: bold, high-energy, works cropped vertically
+- Twitter/X: dynamic, shareable, tells a story at a glance
+- Case Study: 3-5 diverse images showing different aspects
 
 Return JSON:
 {
   "linkedin": "<asset_id>",
   "instagramPost": "<asset_id>",
   "instagramStory": "<asset_id>",
-  "caseStudy": ["<asset_id>", ...],
+  "twitter": "<asset_id>",
+  "caseStudy": ["<asset_id>"],
   "rationale": {
-    "linkedin": "<why this image for LinkedIn>",
-    "instagramPost": "<why this image for Instagram Post>",
-    "instagramStory": "<why this image for Instagram Story>",
-    "caseStudy": "<why these images for Case Study>"
+    "linkedin": "<why>",
+    "instagramPost": "<why>",
+    "instagramStory": "<why>",
+    "twitter": "<why>",
+    "caseStudy": "<why>"
   }
 }`
   );
@@ -133,6 +128,7 @@ Return JSON:
     linkedin: result.linkedin ?? scored[0]?.id ?? '',
     instagramPost: result.instagramPost ?? scored[1]?.id ?? scored[0]?.id ?? '',
     instagramStory: result.instagramStory ?? scored[2]?.id ?? scored[0]?.id ?? '',
+    twitter: result.twitter ?? scored[1]?.id ?? scored[0]?.id ?? '',
     caseStudy: result.caseStudy ?? scored.slice(0, 4).map((a) => a.id),
     rationale: result.rationale ?? {},
   };

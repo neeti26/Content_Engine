@@ -32,6 +32,7 @@ export interface GeneratedContent {
   linkedin: LinkedInContent;
   instagramPost: InstagramPostContent;
   instagramStory: InstagramStoryContent;
+  twitter: TwitterContent;
   caseStudy: CaseStudyContent;
   selectedAssets: SelectedAssets;
   processingLog: ProcessingStep[];
@@ -63,6 +64,12 @@ export interface InstagramStoryContent {
   storyImageBase64?: string;
 }
 
+export interface TwitterContent {
+  tweets: string[];
+  selectedImageId: string;
+  threadHook: string;
+}
+
 export interface CaseStudyContent {
   title: string;
   executiveSummary: string;
@@ -84,6 +91,7 @@ export interface SelectedAssets {
   linkedin: string;
   instagramPost: string;
   instagramStory: string;
+  twitter: string;
   caseStudy: string[];
   selectionRationale: Record<string, string>;
 }
