@@ -8,7 +8,7 @@ An AI-powered pipeline that transforms raw event media into publish-ready market
 
 ## 🚀 Live Demo
 
-**[→ View Live on Vercel](https://stepone-content-engine.vercel.app)**
+**[→ View Live on Vercel](https://contentengine-rust.vercel.app)**
 
 ---
 
@@ -144,3 +144,4 @@ src/
 Built for the StepOne AI Buildathon 2026.
 
 ---
+

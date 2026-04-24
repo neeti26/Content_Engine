@@ -147,7 +147,7 @@ Every decision is documented:
 
 ## 🚀 Live Demo
 
-**URL:** [Your Vercel deployment URL]
+**URL:** https://contentengine-rust.vercel.app
 
 **Test Credentials:** Bring your own OpenAI API key (set in `.env.local` or Vercel env vars)
 
@@ -278,3 +278,4 @@ Special thanks to the StepOne team for defining a real-world problem worth solvi
 **Contact:** [Your email]  
 **GitHub:** [Your GitHub profile]  
 **LinkedIn:** [Your LinkedIn]
+
