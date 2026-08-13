@@ -1,14 +1,11 @@
 ﻿import { GoogleGenAI } from "@google/genai";
 
-let ai: GoogleGenAI | null = null;
-
-function getAI(): GoogleGenAI {
-  if (!ai) {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) throw new Error("GEMINI_API_KEY not set. Get free key at https://aistudio.google.com/app/apikey");
-    ai = new GoogleGenAI({ apiKey });
-  }
-  return ai;
+// Do NOT cache a singleton — always create fresh with the current key
+// so per-request user keys work correctly on Vercel serverless functions.
+function getAI(apiKey?: string): GoogleGenAI {
+  const key = apiKey ?? process.env.GEMINI_API_KEY;
+  if (!key) throw new Error("GEMINI_API_KEY not set. Get free key at https://aistudio.google.com/app/apikey");
+  return new GoogleGenAI({ apiKey: key });
 }
 
 // These are the confirmed working free-tier model IDs for @google/genai SDK
@@ -64,10 +61,11 @@ async function withRetry<T>(fn: (model: string) => Promise<T>): Promise<T> {
 export async function scoreAndDescribeImage(
   base64Image: string,
   mimeType: string,
-  eventContext: string
+  eventContext: string,
+  apiKey?: string
 ): Promise<{ sharpness: number; composition: number; brandRelevance: number; humanEngagement: number; overall: number; reasoning: string; description: string }> {
   return withRetry(async (modelName) => {
-    const res = await getAI().models.generateContent({
+    const res = await getAI(apiKey).models.generateContent({
       model: modelName,
       contents: [{
         role: "user",
@@ -86,12 +84,13 @@ export async function scoreAndDescribeImage(
 export async function generateJSON<T>(
   systemPrompt: string,
   userPrompt: string,
-  maxTokens = 2000
+  maxTokens = 2000,
+  apiKey?: string
 ): Promise<T> {
   return withRetry(async (modelName) => {
     const fullPrompt = `${systemPrompt}\n\n---\n\n${userPrompt}\n\n---\n\nIMPORTANT: Your entire response must be a single valid JSON object. Do NOT include any text before or after the JSON. Do NOT use markdown code fences. Start your response with { and end with }.`;
 
-    const res = await getAI().models.generateContent({
+    const res = await getAI(apiKey).models.generateContent({
       model: modelName,
       contents: [{ role: "user", parts: [{ text: fullPrompt }] }],
       config: { maxOutputTokens: maxTokens, temperature: 0.75 },

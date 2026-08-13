@@ -8,22 +8,59 @@ import { MediaAsset } from '@/types';
 import { v4 as uuidv4 } from 'uuid';
 
 interface Props { onNext: (assets: MediaAsset[]) => void; onBack: () => void; }
-const MAX = 20; const MAX_MB = 10;
+const MAX = 20; const MAX_MB = 15;
+
+// Compress image to fit within target size while preserving quality
+function compressImage(file: File, maxDimension = 1920, quality = 0.85): Promise<{ base64: string; mimeType: string; size: number }> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let { width, height } = img;
+
+        // Scale down if too large
+        if (width > maxDimension || height > maxDimension) {
+          if (width > height) {
+            height = Math.round((height * maxDimension) / width);
+            width = maxDimension;
+          } else {
+            width = Math.round((width * maxDimension) / height);
+            height = maxDimension;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d')!;
+        ctx.drawImage(img, 0, 0, width, height);
+
+        // Use JPEG for compression (except PNGs with transparency use WebP)
+        const outputMime = file.type === 'image/png' ? 'image/webp' : 'image/jpeg';
+        const dataUrl = canvas.toDataURL(outputMime, quality);
+        const base64 = dataUrl.split(',')[1];
+        const size = Math.round(base64.length * 0.75); // approximate bytes
+
+        resolve({ base64, mimeType: outputMime, size });
+      };
+      img.onerror = reject;
+      img.src = e.target?.result as string;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
 
 export default function UploadStep({ onNext, onBack }: Props) {
   const [assets, setAssets] = useState<MediaAsset[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [compressing, setCompressing] = useState(false);
 
-  const processFile = useCallback((file: File): Promise<MediaAsset> =>
-    new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const dataUrl = e.target?.result as string;
-        resolve({ id: uuidv4(), name: file.name, type: 'image', base64: dataUrl.split(',')[1], mimeType: file.type, size: file.size });
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    }), []);
+  const processFile = useCallback(async (file: File): Promise<MediaAsset> => {
+    const { base64, mimeType, size } = await compressImage(file);
+    return { id: uuidv4(), name: file.name, type: 'image', base64, mimeType, size };
+  }, []);
 
   const onDrop = useCallback(async (accepted: File[]) => {
     setError(null);
@@ -32,8 +69,15 @@ export default function UploadStep({ onNext, onBack }: Props) {
     if (accepted.length > remaining) setError(`Max ${MAX} photos — only ${remaining} more allowed`);
     const valid = toProcess.filter(f => f.size <= MAX_MB * 1024 * 1024);
     if (valid.length < toProcess.length) setError(`${toProcess.length - valid.length} file(s) over ${MAX_MB}MB skipped`);
-    const processed = await Promise.all(valid.map(processFile));
-    setAssets(prev => [...prev, ...processed]);
+    setCompressing(true);
+    try {
+      const processed = await Promise.all(valid.map(processFile));
+      setAssets(prev => [...prev, ...processed]);
+    } catch {
+      setError('Failed to process some images. Please try again.');
+    } finally {
+      setCompressing(false);
+    }
   }, [assets.length, processFile]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -61,17 +105,22 @@ export default function UploadStep({ onNext, onBack }: Props) {
           <h1 className="text-3xl font-black text-white mb-1">Upload your event photos</h1>
           <p className="text-white/40 text-sm mb-8">AI will score every image and pick the best one for each platform automatically.</p>
 
-          <div {...getRootProps()} className={`border-2 border-dashed rounded-3xl p-14 text-center cursor-pointer transition-all ${isDragActive ? 'border-indigo-500 bg-indigo-500/8' : 'border-white/10 hover:border-indigo-500/40 hover:bg-indigo-500/4'}`}>
+          <div {...getRootProps()} className={`border-2 border-dashed rounded-3xl p-14 text-center cursor-pointer transition-all ${isDragActive ? 'border-indigo-500 bg-indigo-500/8' : 'border-white/10 hover:border-indigo-500/40 hover:bg-indigo-500/4'} ${compressing ? 'opacity-60 pointer-events-none' : ''}`}>
             <input {...getInputProps()} />
             <div className="flex flex-col items-center gap-4">
               <div className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-all ${isDragActive ? 'bg-indigo-500/20' : 'glass'}`}>
-                <Upload className={`w-7 h-7 ${isDragActive ? 'text-indigo-400' : 'text-white/30'}`} />
+                {compressing
+                  ? <div className="w-7 h-7 border-2 border-indigo-400/30 border-t-indigo-400 rounded-full animate-spin" />
+                  : <Upload className={`w-7 h-7 ${isDragActive ? 'text-indigo-400' : 'text-white/30'}`} />
+                }
               </div>
-              {isDragActive
+              {compressing
+                ? <p className="text-indigo-400 font-bold text-lg">Optimizing photos...</p>
+                : isDragActive
                 ? <p className="text-indigo-400 font-bold text-lg">Drop photos here</p>
                 : <>
                     <p className="text-white font-bold text-lg">Drag & drop event photos</p>
-                    <p className="text-white/30 text-sm">or click to browse · JPG, PNG, WebP · max {MAX_MB}MB · up to {MAX} photos</p>
+                    <p className="text-white/30 text-sm">or click to browse · JPG, PNG, WebP · max {MAX_MB}MB · up to {MAX} photos · auto-compressed</p>
                   </>
               }
             </div>
@@ -112,11 +161,16 @@ export default function UploadStep({ onNext, onBack }: Props) {
           )}
 
           <div className="mt-10 flex justify-end">
-            <motion.button whileHover={{ scale: assets.length > 0 ? 1.02 : 1 }} whileTap={{ scale: 0.98 }}
-              onClick={() => assets.length > 0 && onNext(assets)} disabled={assets.length === 0}
-              className={`flex items-center gap-3 font-bold px-8 py-4 rounded-2xl transition-all ${assets.length > 0 ? 'text-white glow-indigo' : 'bg-white/5 text-white/20 cursor-not-allowed'}`}
-              style={assets.length > 0 ? { background: 'linear-gradient(135deg, #6366f1, #4f46e5)' } : {}}>
-              {assets.length > 0 ? <><CheckCircle className="w-5 h-5" />Continue with {assets.length} photo{assets.length !== 1 ? 's' : ''}<ArrowRight className="w-5 h-5" /></> : 'Upload at least 1 photo'}
+            <motion.button whileHover={{ scale: assets.length > 0 && !compressing ? 1.02 : 1 }} whileTap={{ scale: 0.98 }}
+              onClick={() => assets.length > 0 && !compressing && onNext(assets)} disabled={assets.length === 0 || compressing}
+              className={`flex items-center gap-3 font-bold px-8 py-4 rounded-2xl transition-all ${assets.length > 0 && !compressing ? 'text-white glow-indigo' : 'bg-white/5 text-white/20 cursor-not-allowed'}`}
+              style={assets.length > 0 && !compressing ? { background: 'linear-gradient(135deg, #6366f1, #4f46e5)' } : {}}>
+              {compressing
+                ? <><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />Optimizing...</>
+                : assets.length > 0
+                ? <><CheckCircle className="w-5 h-5" />Continue with {assets.length} photo{assets.length !== 1 ? 's' : ''}<ArrowRight className="w-5 h-5" /></>
+                : 'Upload at least 1 photo'
+              }
             </motion.button>
           </div>
         </motion.div>

@@ -1,14 +1,16 @@
 ﻿'use client';
 
 import { useState } from 'react';
-import { motion } from 'framer-motion';
-import { ArrowLeft, ArrowRight, Zap, Sparkles } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ArrowLeft, ArrowRight, Zap, Sparkles, AlertCircle, X } from 'lucide-react';
 import { EventBrief } from '@/types';
 
 interface Props {
   assetCount: number;
   onSubmit: (brief: EventBrief) => void;
   onBack: () => void;
+  errorMsg?: string | null;
+  onClearError?: () => void;
 }
 
 const tones: { value: EventBrief['tone']; emoji: string; label: string; desc: string }[] = [
@@ -24,7 +26,7 @@ const eventTypes = [
   'Sports Event','CSR Initiative','Other',
 ];
 
-export default function BriefStep({ assetCount, onSubmit, onBack }: Props) {
+export default function BriefStep({ assetCount, onSubmit, onBack, errorMsg, onClearError }: Props) {
   const [form, setForm] = useState<EventBrief>({
     eventName: '', brandName: '', eventType: 'Brand Activation',
     location: '', date: '', keyHighlights: '', targetAudience: '', tone: 'professional',
@@ -72,6 +74,26 @@ export default function BriefStep({ assetCount, onSubmit, onBack }: Props) {
             <h1 className="text-3xl font-black text-white">Tell us about your event</h1>
           </div>
           <p className="text-white/35 text-sm mb-8 ml-12">The more detail you give, the better the AI-generated content will be.</p>
+
+          {/* Error banner */}
+          <AnimatePresence>
+            {errorMsg && (
+              <motion.div
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                className="mb-6 flex items-start gap-3 bg-red-500/10 border border-red-500/30 text-red-300 rounded-2xl px-4 py-3.5 text-sm"
+              >
+                <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                <p className="flex-1 leading-relaxed">{errorMsg}</p>
+                {onClearError && (
+                  <button onClick={onClearError} className="text-red-400/60 hover:text-red-300 transition-colors flex-shrink-0">
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           <div className="space-y-5">
 

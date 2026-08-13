@@ -105,7 +105,7 @@ export default function HeroSection({ onStart, onDemo, apiKey, onApiKeyChange }:
                 type={showKey ? 'text' : 'password'}
                 value={apiKey}
                 onChange={(e) => onApiKeyChange(e.target.value)}
-                placeholder="Paste your Gemini API key..."
+                placeholder="Paste your Gemini API key (optional)..."
                 className="input-field w-full rounded-2xl pl-11 pr-11 py-3.5 text-sm"
               />
               <button onClick={() => setShowKey(!showKey)} className="absolute right-4 top-1/2 -translate-y-1/2 text-white/20 hover:text-white/60 transition-colors">
@@ -113,11 +113,16 @@ export default function HeroSection({ onStart, onDemo, apiKey, onApiKeyChange }:
               </button>
             </div>
             <p className="text-white/20 text-xs mt-2">
-              Free key at{' '}
-              <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="text-indigo-400 hover:text-indigo-300 underline">
-                aistudio.google.com
-              </a>
-              {' '}· stays in your browser · or try Demo Mode
+              {apiKey
+                ? <span className="text-emerald-400">✓ Using your own key — unlimited generations</span>
+                : <>
+                    5 free generations/hour with our hosted key · or paste yours from{' '}
+                    <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="text-indigo-400 hover:text-indigo-300 underline">
+                      aistudio.google.com
+                    </a>
+                    {' '}for unlimited · key stays in your browser
+                  </>
+              }
             </p>
           </div>
 
