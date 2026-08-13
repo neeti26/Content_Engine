@@ -7,7 +7,7 @@ import { generateJSON } from './gemini';
 type AssetWithDesc = MediaAsset & { description?: string };
 
 // ─── LinkedIn ────────────────────────────────────────────────────────────────
-export async function generateLinkedInContent(brief: EventBrief, asset: AssetWithDesc, apiKey?: string): Promise<LinkedInContent> {
+export async function generateLinkedInContent(brief: EventBrief, asset: AssetWithDesc): Promise<LinkedInContent> {
   const result = await generateJSON<LinkedInContent>(
     `You are a B2B LinkedIn copywriter. Tone: ${brief.tone}. Never start with "We", "I", "Our", or "Excited". Write a hook-first post with short paragraphs.`,
     `Write a LinkedIn post for this event:
@@ -26,14 +26,13 @@ Return this JSON:
   "selectedImageId": "${asset.id}",
   "characterCount": 0
 }`,
-    1500,
-    apiKey
+    1500
   );
   return { ...result, selectedImageId: asset.id, characterCount: ((result.headline ?? '') + (result.body ?? '')).length };
 }
 
 // ─── Instagram Post ──────────────────────────────────────────────────────────
-export async function generateInstagramPostContent(brief: EventBrief, asset: AssetWithDesc, apiKey?: string): Promise<InstagramPostContent> {
+export async function generateInstagramPostContent(brief: EventBrief, asset: AssetWithDesc): Promise<InstagramPostContent> {
   const result = await generateJSON<InstagramPostContent>(
     `You are an Instagram content strategist. Write scroll-stopping captions. Tone: ${brief.tone}.`,
     `Write an Instagram caption for this event:
@@ -49,14 +48,13 @@ Return this JSON:
   "selectedImageId": "${asset.id}",
   "characterCount": 0
 }`,
-    1200,
-    apiKey
+    1200
   );
   return { ...result, selectedImageId: asset.id, characterCount: result.caption?.length ?? 0 };
 }
 
 // ─── Instagram Story ─────────────────────────────────────────────────────────
-export async function generateInstagramStoryContent(brief: EventBrief, asset: AssetWithDesc, apiKey?: string): Promise<InstagramStoryContent> {
+export async function generateInstagramStoryContent(brief: EventBrief, asset: AssetWithDesc): Promise<InstagramStoryContent> {
   const result = await generateJSON<InstagramStoryContent>(
     `You design Instagram Story text overlays. Keep it SHORT and BOLD. Think billboard.`,
     `Create a Story overlay for: ${brief.eventName} by ${brief.brandName}. Tone: ${brief.tone}.
@@ -70,14 +68,13 @@ Return this JSON:
   "selectedImageId": "${asset.id}",
   "overlayStyle": "gradient"
 }`,
-    300,
-    apiKey
+    300
   );
   return { ...result, selectedImageId: asset.id };
 }
 
 // ─── Twitter/X Thread ────────────────────────────────────────────────────────
-export async function generateTwitterContent(brief: EventBrief, asset: AssetWithDesc, apiKey?: string): Promise<TwitterContent> {
+export async function generateTwitterContent(brief: EventBrief, asset: AssetWithDesc): Promise<TwitterContent> {
   const result = await generateJSON<TwitterContent>(
     `You write viral Twitter/X threads. Each tweet max 260 chars. Structure: hook, story, insight, proof, CTA.`,
     `Write a 5-tweet thread for: ${brief.eventName} by ${brief.brandName}
@@ -95,14 +92,13 @@ Return this JSON:
   ],
   "selectedImageId": "${asset.id}"
 }`,
-    800,
-    apiKey
+    800
   );
   return { ...result, selectedImageId: asset.id };
 }
 
 // ─── Case Study ──────────────────────────────────────────────────────────────
-export async function generateCaseStudyContent(brief: EventBrief, selectedAssetIds: string[], apiKey?: string): Promise<CaseStudyContent> {
+export async function generateCaseStudyContent(brief: EventBrief, selectedAssetIds: string[]): Promise<CaseStudyContent> {
   const result = await generateJSON<CaseStudyContent>(
     `You write marketing case studies. Be specific with numbers. Structure: challenge, execution, results.`,
     `Write a case study for: ${brief.eventName} by ${brief.brandName}
@@ -126,14 +122,13 @@ Return this JSON:
   "conclusion": "forward-looking paragraph about next steps",
   "selectedImageIds": ${JSON.stringify(selectedAssetIds)}
 }`,
-    2000,
-    apiKey
+    2000
   );
   return { ...result, selectedImageIds: selectedAssetIds };
 }
 
 // ─── WhatsApp Status ─────────────────────────────────────────────────────────
-export async function generateWhatsAppContent(brief: EventBrief, asset: AssetWithDesc, apiKey?: string): Promise<WhatsAppContent> {
+export async function generateWhatsAppContent(brief: EventBrief, asset: AssetWithDesc): Promise<WhatsAppContent> {
   const result = await generateJSON<WhatsAppContent>(
     `You write WhatsApp Status updates. Short, punchy, personal. Max 700 chars. No hashtags. Conversational.`,
     `Write a WhatsApp Status update for: ${brief.eventName} by ${brief.brandName}
@@ -145,8 +140,7 @@ Return this JSON:
   "caption": "personal message to share with contacts, 2-3 sentences, conversational, no hashtags, max 500 chars",
   "selectedImageId": "${asset.id}"
 }`,
-    400,
-    apiKey
+    400
   );
   return { ...result, selectedImageId: asset.id };
 }

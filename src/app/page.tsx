@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { EventBrief, MediaAsset, GeneratedContent } from '@/types';
 import HeroSection from '@/components/HeroSection';
 import UploadStep from '@/components/UploadStep';
@@ -17,25 +17,8 @@ export default function Home() {
   const [assets, setAssets] = useState<MediaAsset[]>([]);
   const [brief, setBrief] = useState<EventBrief | null>(null);
   const [results, setResults] = useState<GeneratedContent | null>(null);
-  const [apiKey, setApiKey] = useState('');
   const [processingPromise, setProcessingPromise] = useState<Promise<GeneratedContent> | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-
-  // Restore API key from localStorage on mount (never store raw key in state beyond session)
-  useEffect(() => {
-    try {
-      const saved = sessionStorage.getItem('gemini_api_key');
-      if (saved) setApiKey(saved);
-    } catch { /* sessionStorage unavailable */ }
-  }, []);
-
-  // Persist API key to sessionStorage (session only, never localStorage)
-  useEffect(() => {
-    try {
-      if (apiKey) sessionStorage.setItem('gemini_api_key', apiKey);
-      else sessionStorage.removeItem('gemini_api_key');
-    } catch { /* sessionStorage unavailable */ }
-  }, [apiKey]);
 
   const handleStart = () => setStep('upload');
   const handleAssetsReady = (a: MediaAsset[]) => { setAssets(a); setStep('brief'); };
@@ -47,7 +30,7 @@ export default function Home() {
     const promise = fetch('/api/process', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ brief: eventBrief, assets, apiKey: apiKey || undefined }),
+      body: JSON.stringify({ brief: eventBrief, assets }),
     }).then(async (res) => {
       const data = await res.json() as { result?: GeneratedContent; error?: string };
       if (!res.ok || data.error) throw new Error(data.error ?? 'Processing failed');
@@ -81,14 +64,10 @@ export default function Home() {
 
   const handleComplete = (content: GeneratedContent) => {
     setResults(content);
-    // Save to localStorage so results survive refresh
+    // Save last result so refresh doesn't wipe it
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({
-        content,
-        brief,
-        savedAt: Date.now(),
-      }));
-    } catch { /* localStorage quota exceeded or unavailable */ }
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ content, brief, savedAt: Date.now() }));
+    } catch { /* storage unavailable */ }
     setStep('results');
   };
 
@@ -109,7 +88,7 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-gray-950">
       {step === 'hero' && (
-        <HeroSection onStart={handleStart} onDemo={handleDemoMode} apiKey={apiKey} onApiKeyChange={setApiKey} />
+        <HeroSection onStart={handleStart} onDemo={handleDemoMode} />
       )}
       {step === 'upload' && (
         <UploadStep onNext={handleAssetsReady} onBack={() => setStep('hero')} />

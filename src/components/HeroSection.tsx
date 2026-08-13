@@ -1,17 +1,14 @@
 ﻿'use client';
 
-import { useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   Zap, FileText, Instagram, Linkedin, ArrowRight,
-  Brain, BarChart2, Twitter, Eye, EyeOff, Key, Sparkles, Play
+  Brain, BarChart2, Twitter, Sparkles, Play
 } from 'lucide-react';
 
 interface Props {
   onStart: () => void;
   onDemo: () => void;
-  apiKey: string;
-  onApiKeyChange: (k: string) => void;
 }
 
 const outputs = [
@@ -24,15 +21,13 @@ const outputs = [
 ];
 
 const steps = [
-  { n: '01', label: 'Upload Photos',         sub: 'Up to 20 event images' },
-  { n: '02', label: 'Describe Your Event',   sub: 'Name, brand, highlights' },
-  { n: '03', label: 'AI Processes',          sub: 'Scores + selects + generates' },
-  { n: '04', label: 'Get 6 Outputs',         sub: 'Copy, download, export' },
+  { n: '01', label: 'Upload Photos',       sub: 'Up to 20 event images' },
+  { n: '02', label: 'Describe Your Event', sub: 'Name, brand, highlights' },
+  { n: '03', label: 'AI Processes',        sub: 'Scores + selects + generates' },
+  { n: '04', label: 'Get 6 Outputs',       sub: 'Copy, download, export' },
 ];
 
-export default function HeroSection({ onStart, onDemo, apiKey, onApiKeyChange }: Props) {
-  const [showKey, setShowKey] = useState(false);
-
+export default function HeroSection({ onStart, onDemo }: Props) {
   return (
     <div className="min-h-screen flex flex-col relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #09090f 0%, #0f0f1a 50%, #09090f 100%)' }}>
 
@@ -55,7 +50,7 @@ export default function HeroSection({ onStart, onDemo, apiKey, onApiKeyChange }:
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-1.5 text-xs text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 px-3 py-1.5 rounded-full">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 pulse-dot" />
-            <span className="hidden sm:inline">Gemini AI · Free Tier</span>
+            <span className="hidden sm:inline">Powered by Gemini AI</span>
           </div>
           <span className="hidden md:block text-xs text-white/20 bg-white/5 border border-white/8 px-3 py-1.5 rounded-full">
             StepOne AI Buildathon 2026
@@ -97,35 +92,6 @@ export default function HeroSection({ onStart, onDemo, apiKey, onApiKeyChange }:
             Upload photos, describe your event — get LinkedIn, Instagram, Story, Twitter thread, and a full case study in under 30 seconds. Zero manual work.
           </p>
 
-          {/* API Key */}
-          <div className="max-w-md mx-auto mb-6">
-            <div className="relative">
-              <Key className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" />
-              <input
-                type={showKey ? 'text' : 'password'}
-                value={apiKey}
-                onChange={(e) => onApiKeyChange(e.target.value)}
-                placeholder="Paste your Gemini API key (optional)..."
-                className="input-field w-full rounded-2xl pl-11 pr-11 py-3.5 text-sm"
-              />
-              <button onClick={() => setShowKey(!showKey)} className="absolute right-4 top-1/2 -translate-y-1/2 text-white/20 hover:text-white/60 transition-colors">
-                {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
-            <p className="text-white/20 text-xs mt-2">
-              {apiKey
-                ? <span className="text-emerald-400">✓ Using your own key — unlimited generations</span>
-                : <>
-                    5 free generations/hour with our hosted key · or paste yours from{' '}
-                    <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="text-indigo-400 hover:text-indigo-300 underline">
-                      aistudio.google.com
-                    </a>
-                    {' '}for unlimited · key stays in your browser
-                  </>
-              }
-            </p>
-          </div>
-
           {/* CTAs */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-14">
             <motion.button
@@ -147,7 +113,6 @@ export default function HeroSection({ onStart, onDemo, apiKey, onApiKeyChange }:
             >
               <Play className="w-4 h-4 text-indigo-400" />
               Try Demo Mode
-              <span className="text-xs text-white/30 font-normal">no key needed</span>
             </motion.button>
           </div>
 

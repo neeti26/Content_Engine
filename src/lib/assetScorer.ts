@@ -9,8 +9,7 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
  */
 export async function scoreAllAssets(
   assets: MediaAsset[],
-  eventContext: string,
-  apiKey?: string
+  eventContext: string
 ): Promise<Array<MediaAsset & { description: string }>> {
   const BATCH = 3;
   const scored: Array<MediaAsset & { description: string }> = [];
@@ -18,7 +17,7 @@ export async function scoreAllAssets(
   for (let i = 0; i < assets.length; i += BATCH) {
     const batch = assets.slice(i, i + BATCH);
     const results = await Promise.allSettled(
-      batch.map((a) => scoreAndDescribeImage(a.base64, a.mimeType, eventContext, apiKey))
+      batch.map((a) => scoreAndDescribeImage(a.base64, a.mimeType, eventContext))
     );
     for (let j = 0; j < batch.length; j++) {
       const asset = batch[j];
@@ -41,7 +40,6 @@ export async function scoreAllAssets(
         scored.push({ ...asset, description: 'Event photo', score: defaultScore() });
       }
     }
-    // Small gap between batches to avoid rate limit
     if (i + BATCH < assets.length) await sleep(1500);
   }
 
@@ -50,8 +48,7 @@ export async function scoreAllAssets(
 
 export async function selectBestAssets(
   assets: Array<MediaAsset & { description?: string }>,
-  eventContext: string,
-  apiKey?: string
+  eventContext: string
 ): Promise<{
   linkedin: string; instagramPost: string; instagramStory: string;
   twitter: string; whatsapp: string; caseStudy: string[]; rationale: Record<string, string>;
@@ -105,8 +102,7 @@ Return this JSON selecting the best asset ID for each platform:
     "caseStudy": "why these images"
   }
 }`,
-    800,
-    apiKey
+    800
   );
 
   return {

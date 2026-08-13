@@ -1,30 +1,24 @@
 ﻿import { GoogleGenAI } from "@google/genai";
 
-// Do NOT cache a singleton — always create fresh with the current key
-// so per-request user keys work correctly on Vercel serverless functions.
-function getAI(apiKey?: string): GoogleGenAI {
-  const key = apiKey ?? process.env.GEMINI_API_KEY;
-  if (!key) throw new Error("GEMINI_API_KEY not set. Get free key at https://aistudio.google.com/app/apikey");
-  return new GoogleGenAI({ apiKey: key });
+function getAI(): GoogleGenAI {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error("GEMINI_API_KEY is not configured");
+  return new GoogleGenAI({ apiKey });
 }
 
-// These are the confirmed working free-tier model IDs for @google/genai SDK
 const MODELS = ["gemini-2.5-flash", "gemini-2.5-flash-lite"];
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 function parseJSON<T>(text: string): T {
   if (!text || text.trim() === "") throw new Error("Empty response from Gemini");
 
-  // 1. Direct parse
   try { return JSON.parse(text.trim()) as T; } catch { /* */ }
 
-  // 2. Strip ```json ... ``` or ``` ... ``` fences
   const fenced = text.match(/```(?:json)?[\r\n]*([\s\S]*?)```/);
   if (fenced?.[1]) {
     try { return JSON.parse(fenced[1].trim()) as T; } catch { /* */ }
   }
 
-  // 3. Find outermost complete { ... } — handles text before/after JSON
   let depth = 0, start = -1, end = -1;
   for (let i = 0; i < text.length; i++) {
     if (text[i] === "{") { if (depth === 0) start = i; depth++; }
@@ -61,11 +55,10 @@ async function withRetry<T>(fn: (model: string) => Promise<T>): Promise<T> {
 export async function scoreAndDescribeImage(
   base64Image: string,
   mimeType: string,
-  eventContext: string,
-  apiKey?: string
+  eventContext: string
 ): Promise<{ sharpness: number; composition: number; brandRelevance: number; humanEngagement: number; overall: number; reasoning: string; description: string }> {
   return withRetry(async (modelName) => {
-    const res = await getAI(apiKey).models.generateContent({
+    const res = await getAI().models.generateContent({
       model: modelName,
       contents: [{
         role: "user",
@@ -84,13 +77,12 @@ export async function scoreAndDescribeImage(
 export async function generateJSON<T>(
   systemPrompt: string,
   userPrompt: string,
-  maxTokens = 2000,
-  apiKey?: string
+  maxTokens = 2000
 ): Promise<T> {
   return withRetry(async (modelName) => {
     const fullPrompt = `${systemPrompt}\n\n---\n\n${userPrompt}\n\n---\n\nIMPORTANT: Your entire response must be a single valid JSON object. Do NOT include any text before or after the JSON. Do NOT use markdown code fences. Start your response with { and end with }.`;
 
-    const res = await getAI(apiKey).models.generateContent({
+    const res = await getAI().models.generateContent({
       model: modelName,
       contents: [{ role: "user", parts: [{ text: fullPrompt }] }],
       config: { maxOutputTokens: maxTokens, temperature: 0.75 },
