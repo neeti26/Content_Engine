@@ -28,29 +28,34 @@ const steps = [
 
 export default function HeroSection({ onStart, onDemo }: Props) {
   return (
-    <div className="min-h-screen flex flex-col relative overflow-hidden" style={{ background: '#09090f' }}>
+    <div className="min-h-screen flex flex-col relative overflow-hidden">
 
-      {/* Dot grid */}
-      <div className="dot-grid" />
-
-      {/* Background orbs — two focused, centered */}
-      <div className="orb w-[700px] h-[700px] opacity-[0.12]" style={{ background: 'radial-gradient(circle, #6366f1, transparent)', top: '-200px', left: '50%', transform: 'translateX(-50%)' }} />
-      <div className="orb w-[400px] h-[400px] opacity-[0.07]" style={{ background: 'radial-gradient(circle, #818cf8, transparent)', bottom: '-100px', right: '10%' }} />
+      {/* Background image */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/bg-purple.jpg"
+        alt=""
+        aria-hidden="true"
+        className="absolute inset-0 w-full h-full object-cover object-center pointer-events-none select-none"
+        style={{ zIndex: 0 }}
+      />
+      {/* Dark scrim — keeps text legible without hiding the photo */}
+      <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 1, background: 'linear-gradient(180deg, rgba(0,0,0,0.58) 0%, rgba(0,0,0,0.45) 50%, rgba(0,0,0,0.65) 100%)' }} />
 
       {/* Nav */}
-      <nav className="relative z-10 flex items-center justify-between px-6 py-4 border-b border-white/5">
+      <nav className="relative flex items-center justify-between px-6 py-4 border-b border-white/10" style={{ zIndex: 10, background: 'rgba(0,0,0,0.3)', backdropFilter: 'blur(12px)' }}>
         <div className="flex items-center gap-3">
           <Logo size={36} />
           <span className="font-black text-white text-sm tracking-tight">Content Engine</span>
         </div>
-        <div className="flex items-center gap-1.5 text-xs text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 px-3 py-1.5 rounded-full">
+        <div className="flex items-center gap-1.5 text-xs text-emerald-300 bg-emerald-400/15 border border-emerald-400/30 px-3 py-1.5 rounded-full">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 pulse-dot" />
           <span className="hidden sm:inline">Powered by Gemini AI</span>
         </div>
       </nav>
 
       {/* Hero body */}
-      <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-6 py-10 text-center">
+      <div className="relative flex-1 flex flex-col items-center justify-center px-6 py-10 text-center" style={{ zIndex: 10 }}>
         <motion.div
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
@@ -63,15 +68,15 @@ export default function HeroSection({ onStart, onDemo }: Props) {
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.1 }}
             className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 mb-6 border-animated border"
-            style={{ background: 'rgba(99,102,241,0.08)' }}
+            style={{ background: 'rgba(99,102,241,0.18)', backdropFilter: 'blur(8px)' }}
           >
-            <Brain className="w-3.5 h-3.5 text-indigo-400" />
-            <span className="text-indigo-300 text-xs font-semibold tracking-wide">AI-powered · photo scoring · 4 platform outputs</span>
-            <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+            <Brain className="w-3.5 h-3.5 text-indigo-300" />
+            <span className="text-indigo-200 text-xs font-semibold tracking-wide">AI-powered · photo scoring · 4 platform outputs</span>
+            <Sparkles className="w-3.5 h-3.5 text-indigo-300" />
           </motion.div>
 
           {/* Headline */}
-          <h1 className="text-5xl sm:text-6xl md:text-[68px] font-black text-white mb-4 leading-[1.06] tracking-tight">
+          <h1 className="text-5xl sm:text-6xl md:text-[68px] font-black text-white mb-4 leading-[1.06] tracking-tight drop-shadow-lg">
             Raw Event Photos
             <br />
             <span className="gradient-text">→ 4 Publish-Ready</span>
@@ -79,7 +84,7 @@ export default function HeroSection({ onStart, onDemo }: Props) {
             <span className="gradient-text">Marketing Assets</span>
           </h1>
 
-          <p className="text-white/45 text-base max-w-lg mx-auto mb-8 leading-relaxed">
+          <p className="text-white/70 text-base max-w-lg mx-auto mb-8 leading-relaxed">
             Upload photos, describe your event — get LinkedIn, Instagram, Story, and a Twitter thread in under 30 seconds.
           </p>
 
@@ -100,9 +105,10 @@ export default function HeroSection({ onStart, onDemo }: Props) {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={onDemo}
-              className="inline-flex items-center gap-2 text-white/60 hover:text-white font-semibold text-base px-7 py-3.5 rounded-2xl transition-all glass card-hover"
+              className="inline-flex items-center gap-2 text-white/80 hover:text-white font-semibold text-base px-7 py-3.5 rounded-2xl transition-all card-hover"
+              style={{ background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.18)' }}
             >
-              <Play className="w-4 h-4 text-indigo-400" />
+              <Play className="w-4 h-4 text-indigo-300" />
               Try Demo
             </motion.button>
           </div>
@@ -111,14 +117,15 @@ export default function HeroSection({ onStart, onDemo }: Props) {
           <div className="flex items-center justify-center gap-2 flex-wrap mb-8">
             {steps.map((s, i) => (
               <div key={s.n} className="flex items-center gap-2">
-                <div className="flex items-center gap-2 glass rounded-xl px-3.5 py-2 card-hover">
-                  <span className="text-indigo-500 text-xs font-black font-mono">{s.n}</span>
+                <div className="flex items-center gap-2 rounded-xl px-3.5 py-2 card-hover"
+                  style={{ background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.12)' }}>
+                  <span className="text-violet-300 text-xs font-black font-mono">{s.n}</span>
                   <div className="text-left">
                     <div className="text-white text-xs font-semibold">{s.label}</div>
-                    <div className="text-white/30 text-[11px]">{s.sub}</div>
+                    <div className="text-white/50 text-[11px]">{s.sub}</div>
                   </div>
                 </div>
-                {i < steps.length - 1 && <ArrowRight className="w-3 h-3 text-indigo-700 flex-shrink-0" />}
+                {i < steps.length - 1 && <ArrowRight className="w-3 h-3 text-violet-400 flex-shrink-0" />}
               </div>
             ))}
           </div>
@@ -131,13 +138,14 @@ export default function HeroSection({ onStart, onDemo }: Props) {
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.35 + i * 0.07 }}
-                className="glass rounded-2xl p-4 text-left card-hover"
+                className="rounded-2xl p-4 text-left card-hover"
+                style={{ background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.12)' }}
               >
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center mb-2.5" style={{ background: `${o.color}18` }}>
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center mb-2.5" style={{ background: `${o.color}25` }}>
                   <o.icon className="w-4 h-4" style={{ color: o.color }} />
                 </div>
                 <div className="text-white text-xs font-bold mb-0.5 leading-tight">{o.label}</div>
-                <div className="text-white/30 text-[11px]">{o.desc}</div>
+                <div className="text-white/50 text-[11px]">{o.desc}</div>
               </motion.div>
             ))}
           </div>
