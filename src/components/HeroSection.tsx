@@ -5,6 +5,7 @@ import {
   Zap, Instagram, Linkedin, ArrowRight,
   Brain, Twitter, Sparkles, Play
 } from 'lucide-react';
+import Logo from '@/components/Logo';
 
 interface Props {
   onStart: () => void;
@@ -39,9 +40,7 @@ export default function HeroSection({ onStart, onDemo }: Props) {
       {/* Nav */}
       <nav className="relative z-10 flex items-center justify-between px-6 py-4 border-b border-white/5">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center glow-sm" style={{ background: 'linear-gradient(135deg, #6366f1, #4f46e5)' }}>
-            <Zap className="w-5 h-5 text-white" />
-          </div>
+          <Logo size={36} />
           <span className="font-black text-white text-sm tracking-tight">Content Engine</span>
         </div>
         <div className="flex items-center gap-1.5 text-xs text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 px-3 py-1.5 rounded-full">

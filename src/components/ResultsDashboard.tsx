@@ -12,6 +12,7 @@ import { GeneratedContent, MediaAsset, EventBrief } from '@/types';
 import { getStoryOverlayConfig, generateStoryImageCanvas } from '@/lib/storyImageGenerator';
 import ArchitectureView from '@/components/ArchitectureView';
 import PublishPanel from '@/components/PublishPanel';
+import Logo from '@/components/Logo';
 
 interface Props {
   content: GeneratedContent;
@@ -563,12 +564,7 @@ export default function ResultsDashboard({ content, assets, brief, onReset }: Pr
         }}
       >
         <div className="flex items-center gap-3 min-w-0">
-          <div
-            className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-            style={{ background: 'rgba(99,102,241,0.2)' }}
-          >
-            <Zap className="w-4 h-4 text-indigo-400" />
-          </div>
+          <Logo size={32} className="flex-shrink-0" />
           <div className="min-w-0">
             <h1 className="font-black text-white text-sm truncate">{brief.eventName}</h1>
             <p className="text-gray-600 text-xs">{brief.brandName} · {assets.length} assets processed</p>
