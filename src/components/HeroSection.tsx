@@ -53,7 +53,7 @@ export default function HeroSection({ onStart, onDemo }: Props) {
       </nav>
 
       {/* Hero body */}
-      <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-6 py-12 text-center">
+      <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-6 py-16 pb-24 text-center">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
@@ -69,7 +69,7 @@ export default function HeroSection({ onStart, onDemo }: Props) {
             style={{ background: 'rgba(99,102,241,0.08)' }}
           >
             <Brain className="w-4 h-4 text-indigo-400" />
-            <span className="text-indigo-300 text-sm font-semibold">AI scores every photo · selects best per platform · generates all 4 outputs</span>
+            <span className="text-indigo-300 text-sm font-semibold">AI-powered · photo scoring · 4 platform outputs</span>
             <Sparkles className="w-4 h-4 text-indigo-400" />
           </motion.div>
 
@@ -127,7 +127,7 @@ export default function HeroSection({ onStart, onDemo }: Props) {
           </div>
 
           {/* Output cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-2xl mx-auto w-full">
             {outputs.map((o, i) => (
               <motion.div
                 key={o.label}
