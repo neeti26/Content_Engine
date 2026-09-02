@@ -3,10 +3,10 @@
 import { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Linkedin, Instagram, FileText, RotateCcw, Copy, Check,
-  Download, Star, ChevronDown, ChevronUp, Zap, BarChart2,
-  Twitter, TrendingUp, Award, Users, Calendar, MapPin,
-  Image as ImageIcon, BookOpen, Package, Share2, MessageCircle
+  Linkedin, Instagram, RotateCcw, Copy, Check,
+  Download, Star, ChevronDown, ChevronUp, Zap,
+  Twitter,
+  Image as ImageIcon, Package, Share2, MessageCircle
 } from 'lucide-react';
 import { GeneratedContent, MediaAsset, EventBrief } from '@/types';
 import { getStoryOverlayConfig, generateStoryImageCanvas } from '@/lib/storyImageGenerator';
@@ -20,17 +20,15 @@ interface Props {
   onReset: () => void;
 }
 
-type Tab = 'linkedin' | 'instagram' | 'story' | 'twitter' | 'whatsapp' | 'casestudy' | 'assets' | 'architecture';
+type Tab = 'linkedin' | 'instagram' | 'story' | 'twitter' | 'whatsapp' | 'architecture';
 
 const tabs: { id: Tab; label: string; icon: React.ElementType; colorClass: string }[] = [
-  { id: 'linkedin',     label: 'LinkedIn',      icon: Linkedin,  colorClass: 'text-blue-400' },
-  { id: 'instagram',    label: 'Instagram Post', icon: Instagram, colorClass: 'text-pink-400' },
-  { id: 'story',        label: 'IG Story',       icon: Instagram, colorClass: 'text-orange-400' },
-  { id: 'twitter',      label: 'Twitter/X',      icon: Twitter,   colorClass: 'text-sky-400' },
+  { id: 'linkedin',     label: 'LinkedIn',      icon: Linkedin,      colorClass: 'text-blue-400' },
+  { id: 'instagram',    label: 'Instagram Post', icon: Instagram,     colorClass: 'text-pink-400' },
+  { id: 'story',        label: 'IG Story',       icon: Instagram,     colorClass: 'text-orange-400' },
+  { id: 'twitter',      label: 'Twitter/X',      icon: Twitter,       colorClass: 'text-sky-400' },
   { id: 'whatsapp',     label: 'WhatsApp',       icon: MessageCircle, colorClass: 'text-green-400' },
-  { id: 'casestudy',    label: 'Case Study',     icon: FileText,  colorClass: 'text-emerald-400' },
-  { id: 'assets',       label: 'Asset Scores',   icon: BarChart2, colorClass: 'text-indigo-400' },
-  { id: 'architecture', label: 'Architecture',   icon: Package,   colorClass: 'text-gray-400' },
+  { id: 'architecture', label: 'Architecture',   icon: Package,       colorClass: 'text-gray-400' },
 ];
 
 // ─── Reusable helpers ────────────────────────────────────────────────────────
@@ -490,247 +488,6 @@ function TwitterTab({ content, assets }: { content: GeneratedContent; assets: Me
 
 // ─── Tab: Case Study ─────────────────────────────────────────────────────────
 
-function CaseStudyTab({ content, assets }: { content: GeneratedContent; assets: MediaAsset[] }) {
-  const cs = content.caseStudy;
-  const selectedImages = cs.selectedImageIds
-    .map((id) => assets.find((a) => a.id === id))
-    .filter(Boolean) as MediaAsset[];
-
-  const fullText = [
-    cs.title,
-    '',
-    'EXECUTIVE SUMMARY',
-    cs.executiveSummary,
-    '',
-    'EVENT OVERVIEW',
-    cs.eventOverview,
-    '',
-    'KEY HIGHLIGHTS',
-    ...cs.keyHighlights.map((h) => `• ${h}`),
-    '',
-    'BRAND NARRATIVE',
-    cs.brandNarrative,
-    '',
-    'CONCLUSION',
-    cs.conclusion,
-  ].join('\n');
-
-  return (
-    <div className="space-y-6">
-      {/* Impact metrics */}
-      {cs.impactMetrics && cs.impactMetrics.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-          {cs.impactMetrics.map((metric, i) => (
-            <GlassCard key={i} className="text-center">
-              <div className="text-3xl mb-1">{metric.icon}</div>
-              <div className="text-2xl font-black text-white">{metric.value}</div>
-              <div className="text-xs text-gray-500 mt-1">{metric.label}</div>
-            </GlassCard>
-          ))}
-        </div>
-      )}
-
-      {/* Title + export */}
-      <div className="flex items-start justify-between gap-4">
-        <h2 className="text-2xl font-black text-white">{cs.title}</h2>
-        <CopyButton text={fullText} label="Copy Full Case Study" />
-      </div>
-
-      {/* Executive Summary */}
-      <GlassCard>
-        <div className="flex items-center gap-2 mb-3">
-          <BookOpen className="w-4 h-4 text-green-400" />
-          <SectionLabel>Executive Summary</SectionLabel>
-        </div>
-        <p className="text-gray-300 text-sm leading-relaxed">{cs.executiveSummary}</p>
-      </GlassCard>
-
-      {/* Event Overview */}
-      <GlassCard>
-        <div className="flex items-center gap-2 mb-3">
-          <Calendar className="w-4 h-4 text-blue-400" />
-          <SectionLabel>Event Overview</SectionLabel>
-        </div>
-        <p className="text-gray-300 text-sm leading-relaxed">{cs.eventOverview}</p>
-      </GlassCard>
-
-      {/* Key Highlights */}
-      {cs.keyHighlights && cs.keyHighlights.length > 0 && (
-        <GlassCard>
-          <div className="flex items-center gap-2 mb-3">
-            <Star className="w-4 h-4 text-yellow-400" />
-            <SectionLabel>Key Highlights</SectionLabel>
-          </div>
-          <ul className="space-y-2">
-            {cs.keyHighlights.map((h, i) => (
-              <li key={i} className="flex items-start gap-2 text-sm text-gray-300">
-                <span className="text-indigo-400 mt-0.5 flex-shrink-0">•</span>
-                {h}
-              </li>
-            ))}
-          </ul>
-        </GlassCard>
-      )}
-
-      {/* Brand Narrative */}
-      <GlassCard>
-        <div className="flex items-center gap-2 mb-3">
-          <TrendingUp className="w-4 h-4 text-purple-400" />
-          <SectionLabel>Brand Narrative</SectionLabel>
-        </div>
-        <p className="text-gray-300 text-sm leading-relaxed">{cs.brandNarrative}</p>
-      </GlassCard>
-
-      {/* Conclusion */}
-      <GlassCard>
-        <div className="flex items-center gap-2 mb-3">
-          <Award className="w-4 h-4 text-orange-400" />
-          <SectionLabel>Conclusion</SectionLabel>
-        </div>
-        <p className="text-gray-300 text-sm leading-relaxed">{cs.conclusion}</p>
-      </GlassCard>
-
-      {/* Selected images */}
-      {selectedImages.length > 0 && (
-        <div>
-          <SectionLabel>Selected Images</SectionLabel>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-3">
-            {selectedImages.map((asset) => (
-              <div key={asset.id} className="aspect-video rounded-xl overflow-hidden bg-gray-900">
-                <AssetImg asset={asset} />
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── Tab: Asset Scores ───────────────────────────────────────────────────────
-
-function AssetScoresTab({
-  content,
-  assets,
-}: {
-  content: GeneratedContent;
-  assets: MediaAsset[];
-}) {
-  const [openRationale, setOpenRationale] = useState<string | null>(null);
-  const sa = content.selectedAssets;
-
-  const getPlatformBadges = (assetId: string) => {
-    const badges: { label: string; color: string }[] = [];
-    if (sa.linkedin === assetId) badges.push({ label: 'LI', color: 'bg-blue-500/20 text-blue-300 border-blue-500/30' });
-    if (sa.instagramPost === assetId) badges.push({ label: 'IG', color: 'bg-pink-500/20 text-pink-300 border-pink-500/30' });
-    if (sa.instagramStory === assetId) badges.push({ label: 'Story', color: 'bg-orange-500/20 text-orange-300 border-orange-500/30' });
-    if (sa.twitter === assetId) badges.push({ label: 'X', color: 'bg-sky-500/20 text-sky-300 border-sky-500/30' });
-    if (sa.caseStudy?.includes(assetId)) badges.push({ label: 'CS', color: 'bg-green-500/20 text-green-300 border-green-500/30' });
-    return badges;
-  };
-
-  const sortedAssets = [...assets].sort((a, b) => {
-    const sa = a.score?.overall ?? 0;
-    const sb = b.score?.overall ?? 0;
-    return sb - sa;
-  });
-
-  return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-      {sortedAssets.map((asset, idx) => {
-        const score = asset.score;
-        const badges = getPlatformBadges(asset.id);
-        const rationale = sa.selectionRationale?.[asset.id];
-        const isOpen = openRationale === asset.id;
-
-        return (
-          <GlassCard key={asset.id} className="flex flex-col gap-3">
-            {/* Image */}
-            <div className="relative aspect-video rounded-xl overflow-hidden bg-gray-900">
-              <AssetImg asset={asset} />
-              {/* Rank badge */}
-              <div className="absolute top-2 left-2 w-7 h-7 rounded-full bg-black/70 flex items-center justify-center">
-                <span className="text-xs font-bold text-white">#{idx + 1}</span>
-              </div>
-              {/* Overall score badge */}
-              {score && (
-                <div
-                  className="absolute top-2 right-2 px-2 py-0.5 rounded-full text-xs font-bold"
-                  style={{
-                    background: score.overall >= 7 ? 'rgba(99,102,241,0.85)' : score.overall >= 5 ? 'rgba(234,179,8,0.85)' : 'rgba(239,68,68,0.85)',
-                    color: '#fff',
-                  }}
-                >
-                  {score.overall.toFixed(1)}
-                </div>
-              )}
-            </div>
-
-            {/* Platform badges */}
-            {badges.length > 0 && (
-              <div className="flex flex-wrap gap-1.5">
-                {badges.map((b) => (
-                  <span
-                    key={b.label}
-                    className={`text-xs px-2 py-0.5 rounded-full border font-medium ${b.color}`}
-                  >
-                    {b.label}
-                  </span>
-                ))}
-              </div>
-            )}
-
-            {/* Score bars */}
-            {score ? (
-              <div className="space-y-2">
-                <ScoreBar label="Sharpness" value={score.sharpness} color="bg-blue-500" />
-                <ScoreBar label="Composition" value={score.composition} color="bg-purple-500" />
-                <ScoreBar label="Brand Relevance" value={score.brandRelevance} color="bg-indigo-500" />
-                <ScoreBar label="Human Engagement" value={score.humanEngagement} color="bg-pink-500" />
-              </div>
-            ) : (
-              <p className="text-xs text-gray-600">No score available</p>
-            )}
-
-            {/* Reasoning */}
-            {score?.reasoning && (
-              <p className="text-xs text-gray-600 leading-relaxed">{score.reasoning}</p>
-            )}
-
-            {/* Rationale accordion */}
-            {rationale && (
-              <div>
-                <button
-                  onClick={() => setOpenRationale(isOpen ? null : asset.id)}
-                  className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-300 transition-colors w-full"
-                >
-                  {isOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                  Selection Rationale
-                </button>
-                <AnimatePresence>
-                  {isOpen && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="overflow-hidden"
-                    >
-                      <p className="text-xs text-gray-500 leading-relaxed mt-2 pt-2 border-t" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
-                        {rationale}
-                      </p>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            )}
-          </GlassCard>
-        );
-      })}
-    </div>
-  );
-}
-
 // ─── Main Component ──────────────────────────────────────────────────────────
 
 export default function ResultsDashboard({ content, assets, brief, onReset }: Props) {
@@ -926,12 +683,6 @@ export default function ResultsDashboard({ content, assets, brief, onReset }: Pr
             )}
             {activeTab === 'twitter' && (
               <TwitterTab content={content} assets={assets} />
-            )}
-            {activeTab === 'casestudy' && (
-              <CaseStudyTab content={content} assets={assets} />
-            )}
-            {activeTab === 'assets' && (
-              <AssetScoresTab content={content} assets={assets} />
             )}
             {activeTab === 'whatsapp' && (
               <WhatsAppTab content={content} assets={assets} />

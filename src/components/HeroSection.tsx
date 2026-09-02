@@ -2,8 +2,8 @@
 
 import { motion } from 'framer-motion';
 import {
-  Zap, FileText, Instagram, Linkedin, ArrowRight,
-  Brain, BarChart2, Twitter, Sparkles, Play
+  Zap, Instagram, Linkedin, ArrowRight,
+  Brain, Twitter, Sparkles, Play
 } from 'lucide-react';
 
 interface Props {
@@ -16,15 +16,13 @@ const outputs = [
   { icon: Instagram, color: '#ec4899', label: 'Instagram Post',   desc: 'Caption + 30 hashtags' },
   { icon: Instagram, color: '#f97316', label: 'IG Story',         desc: '1080×1920 rendered' },
   { icon: Twitter,   color: '#38bdf8', label: 'Twitter Thread',   desc: '5-tweet viral thread' },
-  { icon: FileText,  color: '#34d399', label: 'Case Study',       desc: 'Metrics + narrative' },
-  { icon: BarChart2, color: '#a78bfa', label: 'Asset Scores',     desc: '4-dimension AI scoring' },
 ];
 
 const steps = [
   { n: '01', label: 'Upload Photos',       sub: 'Up to 20 event images' },
   { n: '02', label: 'Describe Your Event', sub: 'Name, brand, highlights' },
   { n: '03', label: 'AI Processes',        sub: 'Scores + selects + generates' },
-  { n: '04', label: 'Get 6 Outputs',       sub: 'Copy, download, export' },
+  { n: '04', label: 'Get 4 Outputs',       sub: 'Copy, download, export' },
 ];
 
 export default function HeroSection({ onStart, onDemo }: Props) {
@@ -43,8 +41,7 @@ export default function HeroSection({ onStart, onDemo }: Props) {
             <Zap className="w-5 h-5 text-white" />
           </div>
           <div>
-            <span className="font-black text-white text-sm tracking-tight">StepOne</span>
-            <span className="text-white/30 text-xs ml-1.5">Content Engine</span>
+            <span className="font-black text-white text-sm tracking-tight">Content Engine</span>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -52,9 +49,6 @@ export default function HeroSection({ onStart, onDemo }: Props) {
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 pulse-dot" />
             <span className="hidden sm:inline">Powered by Gemini AI</span>
           </div>
-          <span className="hidden md:block text-xs text-white/20 bg-white/5 border border-white/8 px-3 py-1.5 rounded-full">
-            StepOne AI Buildathon 2026
-          </span>
         </div>
       </nav>
 
@@ -75,7 +69,7 @@ export default function HeroSection({ onStart, onDemo }: Props) {
             style={{ background: 'rgba(99,102,241,0.08)' }}
           >
             <Brain className="w-4 h-4 text-indigo-400" />
-            <span className="text-indigo-300 text-sm font-semibold">AI scores every photo · selects best per platform · generates all 6 outputs</span>
+            <span className="text-indigo-300 text-sm font-semibold">AI scores every photo · selects best per platform · generates all 4 outputs</span>
             <Sparkles className="w-4 h-4 text-indigo-400" />
           </motion.div>
 
@@ -83,13 +77,13 @@ export default function HeroSection({ onStart, onDemo }: Props) {
           <h1 className="text-5xl sm:text-6xl md:text-[72px] font-black text-white mb-5 leading-[1.04] tracking-tight">
             Raw Event Photos
             <br />
-            <span className="gradient-text">→ 6 Publish-Ready</span>
+            <span className="gradient-text">→ 4 Publish-Ready</span>
             <br />
             <span className="gradient-text">Marketing Assets</span>
           </h1>
 
           <p className="text-white/40 text-lg max-w-xl mx-auto mb-10 leading-relaxed">
-            Upload photos, describe your event — get LinkedIn, Instagram, Story, Twitter thread, and a full case study in under 30 seconds. Zero manual work.
+            Upload photos, describe your event — get LinkedIn, Instagram, Story, and a Twitter thread in under 30 seconds. Zero manual work.
           </p>
 
           {/* CTAs */}
