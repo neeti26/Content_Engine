@@ -30,10 +30,24 @@ html, body { max-width: 100vw; overflow-x: hidden; font-family: 'Inter', system-
 
 /* ── Gradient text ── */
 .gradient-text {
-  background: linear-gradient(135deg, #e0d7ff 0%, #a78bfa 40%, #7c3aed 100%);
+  background: linear-gradient(100deg, #f0abfc 0%, #c084fc 30%, #a78bfa 60%, #818cf8 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+}
+
+/* ── Shimmer on gradient text ── */
+@keyframes shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+.gradient-text-shimmer {
+  background: linear-gradient(100deg, #f0abfc 0%, #c084fc 20%, #ffffff 40%, #c084fc 60%, #a78bfa 80%, #818cf8 100%);
+  background-size: 800px 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: shimmer 4s linear infinite;
 }
 
 /* ── Glows ── */

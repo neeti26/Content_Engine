@@ -64,52 +64,71 @@ export default function HeroSection({ onStart, onDemo }: Props) {
         >
           {/* Badge */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.92 }}
+            initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.1 }}
-            className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 mb-6 border-animated border"
-            style={{ background: 'rgba(124,58,237,0.22)', backdropFilter: 'blur(10px)', borderColor: 'rgba(167,139,250,0.45)' }}
+            className="inline-flex items-center gap-2 rounded-full px-5 py-2 mb-7 border"
+            style={{
+              background: 'linear-gradient(135deg, rgba(124,58,237,0.3), rgba(236,72,153,0.15))',
+              backdropFilter: 'blur(12px)',
+              borderColor: 'rgba(240,171,252,0.4)',
+              boxShadow: '0 0 24px rgba(168,85,247,0.25), inset 0 1px 0 rgba(255,255,255,0.1)'
+            }}
           >
-            <Brain className="w-3.5 h-3.5 text-violet-300" />
-            <span className="text-violet-100 text-xs font-semibold tracking-wide">AI-powered · photo scoring · 4 platform outputs</span>
-            <Sparkles className="w-3.5 h-3.5 text-violet-300" />
+            <Brain className="w-3.5 h-3.5 text-fuchsia-300" />
+            <span className="text-fuchsia-100 text-xs font-bold tracking-widest uppercase">AI-powered · photo scoring · 4 platform outputs</span>
+            <Sparkles className="w-3.5 h-3.5 text-fuchsia-300" />
           </motion.div>
 
           {/* Headline */}
-          <h1 className="text-5xl sm:text-6xl md:text-[68px] font-black text-white mb-4 leading-[1.06] tracking-tight"
-            style={{ textShadow: '0 2px 40px rgba(167,139,250,0.3)' }}>
+          <h1 className="text-5xl sm:text-6xl md:text-[72px] font-black text-white mb-4 leading-[1.04] tracking-tight">
             Raw Event Photos
             <br />
-            <span className="gradient-text">→ 4 Publish-Ready</span>
+            <span className="gradient-text-shimmer">→ 4 Publish-Ready</span>
             <br />
             <span className="gradient-text">Marketing Assets</span>
           </h1>
 
-          <p className="text-violet-100/80 text-base max-w-lg mx-auto mb-8 leading-relaxed font-medium">
-            Upload photos, describe your event — get LinkedIn, Instagram, Story, and a Twitter thread in under 30 seconds.
+          {/* Decorative accent line under headline */}
+          <div className="flex items-center justify-center gap-2 mb-5">
+            <div className="h-px w-16 rounded-full" style={{ background: 'linear-gradient(90deg, transparent, rgba(192,132,252,0.6))' }} />
+            <div className="w-1.5 h-1.5 rounded-full bg-fuchsia-400" style={{ boxShadow: '0 0 8px rgba(232,121,249,0.8)' }} />
+            <div className="h-px w-16 rounded-full" style={{ background: 'linear-gradient(90deg, rgba(192,132,252,0.6), transparent)' }} />
+          </div>
+
+          <p className="text-violet-100/85 text-base max-w-lg mx-auto mb-8 leading-relaxed font-medium">
+            Upload photos, describe your event — get LinkedIn, Instagram, Story, and a Twitter thread in <span className="text-fuchsia-300 font-bold">under 30 seconds</span>. Zero manual work.
           </p>
 
           {/* CTAs */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-10">
             <motion.button
-              whileHover={{ scale: 1.03, y: -1 }}
+              whileHover={{ scale: 1.04, y: -2 }}
               whileTap={{ scale: 0.97 }}
               onClick={onStart}
-              className="inline-flex items-center gap-3 text-white font-bold text-base px-7 py-3.5 rounded-2xl transition-all glow-indigo"
-              style={{ background: 'linear-gradient(135deg, #7c3aed, #6366f1)', boxShadow: '0 0 40px rgba(124,58,237,0.55), 0 4px 20px rgba(99,102,241,0.3)' }}
+              className="inline-flex items-center gap-3 text-white font-bold text-base px-8 py-4 rounded-2xl transition-all relative overflow-hidden"
+              style={{
+                background: 'linear-gradient(135deg, #9333ea, #7c3aed, #6366f1)',
+                boxShadow: '0 0 48px rgba(147,51,234,0.6), 0 4px 24px rgba(99,102,241,0.4), inset 0 1px 0 rgba(255,255,255,0.15)'
+              }}
             >
-              <Zap className="w-4 h-4" />
-              Upload Photos & Generate
+              <Zap className="w-4 h-4 drop-shadow-[0_0_6px_rgba(255,255,255,0.8)]" />
+              Upload Photos &amp; Generate
               <ArrowRight className="w-4 h-4" />
             </motion.button>
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={onDemo}
-              className="inline-flex items-center gap-2 text-white font-semibold text-base px-7 py-3.5 rounded-2xl transition-all card-hover"
-              style={{ background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(14px)', border: '1px solid rgba(255,255,255,0.22)' }}
+              className="inline-flex items-center gap-2 text-white font-semibold text-base px-7 py-4 rounded-2xl transition-all card-hover"
+              style={{
+                background: 'rgba(255,255,255,0.1)',
+                backdropFilter: 'blur(16px)',
+                border: '1px solid rgba(240,171,252,0.25)',
+                boxShadow: '0 4px 20px rgba(0,0,0,0.3)'
+              }}
             >
-              <Play className="w-4 h-4 text-violet-300" />
+              <Play className="w-4 h-4 text-fuchsia-300" />
               Try Demo
             </motion.button>
           </div>
@@ -118,15 +137,27 @@ export default function HeroSection({ onStart, onDemo }: Props) {
           <div className="flex items-center justify-center gap-2 flex-wrap mb-8">
             {steps.map((s, i) => (
               <div key={s.n} className="flex items-center gap-2">
-                <div className="flex items-center gap-2 rounded-xl px-3.5 py-2 card-hover"
-                  style={{ background: 'rgba(15,5,30,0.55)', backdropFilter: 'blur(14px)', border: '1px solid rgba(167,139,250,0.2)' }}>
-                  <span className="text-violet-300 text-xs font-black font-mono">{s.n}</span>
+                <div
+                  className="flex items-center gap-2.5 rounded-xl px-4 py-2.5 card-hover"
+                  style={{
+                    background: 'rgba(20,5,40,0.6)',
+                    backdropFilter: 'blur(16px)',
+                    border: '1px solid rgba(192,132,252,0.25)',
+                    boxShadow: '0 2px 12px rgba(0,0,0,0.3)'
+                  }}
+                >
+                  <span
+                    className="text-xs font-black font-mono"
+                    style={{ background: 'linear-gradient(135deg, #f0abfc, #a78bfa)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}
+                  >{s.n}</span>
                   <div className="text-left">
-                    <div className="text-white text-xs font-bold">{s.label}</div>
-                    <div className="text-violet-200/60 text-[11px]">{s.sub}</div>
+                    <div className="text-white text-xs font-bold leading-tight">{s.label}</div>
+                    <div className="text-fuchsia-200/55 text-[10px] mt-0.5">{s.sub}</div>
                   </div>
                 </div>
-                {i < steps.length - 1 && <ArrowRight className="w-3 h-3 text-violet-400 flex-shrink-0" />}
+                {i < steps.length - 1 && (
+                  <ArrowRight className="w-3 h-3 flex-shrink-0" style={{ color: 'rgba(192,132,252,0.7)' }} />
+                )}
               </div>
             ))}
           </div>
@@ -136,17 +167,31 @@ export default function HeroSection({ onStart, onDemo }: Props) {
             {outputs.map((o, i) => (
               <motion.div
                 key={o.label}
-                initial={{ opacity: 0, y: 16 }}
+                initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.35 + i * 0.07 }}
-                className="rounded-2xl p-4 text-left card-hover"
-                style={{ background: 'rgba(15,5,30,0.6)', backdropFilter: 'blur(18px)', border: '1px solid rgba(167,139,250,0.22)' }}
+                transition={{ delay: 0.35 + i * 0.08 }}
+                className="rounded-2xl p-4 text-left card-hover relative overflow-hidden"
+                style={{
+                  background: 'rgba(15,4,32,0.65)',
+                  backdropFilter: 'blur(20px)',
+                  border: `1px solid ${o.color}40`,
+                  boxShadow: `0 4px 20px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.06)`
+                }}
               >
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center mb-2.5" style={{ background: `${o.color}30` }}>
-                  <o.icon className="w-4 h-4" style={{ color: o.color, filter: `drop-shadow(0 0 6px ${o.color}88)` }} />
+                {/* Color bleed top-left */}
+                <div className="absolute top-0 left-0 w-12 h-12 rounded-full opacity-20 pointer-events-none"
+                  style={{ background: o.color, filter: 'blur(16px)', transform: 'translate(-30%, -30%)' }} />
+                <div
+                  className="w-8 h-8 rounded-lg flex items-center justify-center mb-3"
+                  style={{ background: `${o.color}22`, border: `1px solid ${o.color}40` }}
+                >
+                  <o.icon
+                    className="w-4 h-4"
+                    style={{ color: o.color, filter: `drop-shadow(0 0 8px ${o.color})` }}
+                  />
                 </div>
                 <div className="text-white text-xs font-bold mb-0.5 leading-tight">{o.label}</div>
-                <div className="text-violet-200/55 text-[11px]">{o.desc}</div>
+                <div className="text-white/45 text-[10px]">{o.desc}</div>
               </motion.div>
             ))}
           </div>
