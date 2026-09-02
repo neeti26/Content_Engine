@@ -27,15 +27,15 @@ export async function runPipeline(
 
   // Step 3: Generate content sequentially (rate limit safe)
   const linkedin       = await generateLinkedInContent(brief, find(selection.linkedin));
-  await sleep(1000);
+  await sleep(1500);
   const instagramPost  = await generateInstagramPostContent(brief, find(selection.instagramPost));
-  await sleep(1000);
+  await sleep(1500);
   const instagramStory = await generateInstagramStoryContent(brief, find(selection.instagramStory));
-  await sleep(1000);
+  await sleep(1500);
   const twitter        = await generateTwitterContent(brief, find(twitterId));
-  await sleep(1000);
+  await sleep(1500);
   const whatsapp       = await generateWhatsAppContent(brief, find(whatsappId));
-  await sleep(1000);
+  await sleep(1500);
   const caseStudy      = await generateCaseStudyContent(brief, selection.caseStudy);
 
   return {

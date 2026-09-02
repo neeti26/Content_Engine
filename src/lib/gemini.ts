@@ -6,26 +6,30 @@ function getAI(): GoogleGenAI {
   return new GoogleGenAI({ apiKey });
 }
 
-const MODELS = ["gemini-2.5-flash", "gemini-2.5-flash-lite"];
+const MODELS = ["gemini-1.5-flash", "gemini-1.5-flash-8b"];
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 function parseJSON<T>(text: string): T {
   if (!text || text.trim() === "") throw new Error("Empty response from Gemini");
 
-  try { return JSON.parse(text.trim()) as T; } catch { /* */ }
+  // Strip <think>...</think> reasoning blocks some models prepend
+  const stripped = text.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+  const src = stripped || text.trim();
 
-  const fenced = text.match(/```(?:json)?[\r\n]*([\s\S]*?)```/);
+  try { return JSON.parse(src) as T; } catch { /* */ }
+
+  const fenced = src.match(/```(?:json)?[\r\n]*([\s\S]*?)```/);
   if (fenced?.[1]) {
     try { return JSON.parse(fenced[1].trim()) as T; } catch { /* */ }
   }
 
   let depth = 0, start = -1, end = -1;
-  for (let i = 0; i < text.length; i++) {
-    if (text[i] === "{") { if (depth === 0) start = i; depth++; }
-    else if (text[i] === "}") { depth--; if (depth === 0) { end = i; break; } }
+  for (let i = 0; i < src.length; i++) {
+    if (src[i] === "{") { if (depth === 0) start = i; depth++; }
+    else if (src[i] === "}") { depth--; if (depth === 0) { end = i; break; } }
   }
   if (start !== -1 && end !== -1) {
-    try { return JSON.parse(text.slice(start, end + 1)) as T; } catch { /* */ }
+    try { return JSON.parse(src.slice(start, end + 1)) as T; } catch { /* */ }
   }
 
   console.error("[Gemini] Cannot parse response. Raw (first 500 chars):", text.slice(0, 500));
@@ -44,7 +48,7 @@ async function withRetry<T>(fn: (model: string) => Promise<T>): Promise<T> {
         const isModelError = msg.includes("404") || msg.includes("not found") || msg.includes("not supported") || msg.includes("INVALID_ARGUMENT");
         const isRateLimit  = msg.includes("429") || msg.includes("quota") || msg.includes("Too Many") || msg.includes("RESOURCE_EXHAUSTED");
         if (isModelError) { console.log(`[Gemini] Model ${model} not available, trying next`); break; }
-        if (isRateLimit && attempt < 2) { console.log(`[Gemini] Rate limit, waiting ${(attempt + 1) * 6}s...`); await sleep((attempt + 1) * 6000); continue; }
+        if (isRateLimit && attempt < 2) { console.log(`[Gemini] Rate limit, waiting ${(attempt + 1) * 8}s...`); await sleep((attempt + 1) * 8000); continue; }
         if (!isRateLimit) break;
       }
     }
@@ -67,7 +71,7 @@ export async function scoreAndDescribeImage(
           { text: `Score this event photo. Event: ${eventContext}\n\nRespond with ONLY this JSON object, nothing else:\n{"sharpness":7,"composition":8,"brandRelevance":6,"humanEngagement":9,"overall":7.5,"reasoning":"Brief reason","description":"What you see"}` },
         ],
       }],
-      config: { maxOutputTokens: 400, temperature: 0.1 },
+      config: { maxOutputTokens: 600, temperature: 0.1 },
     });
     const text = res.text ?? "";
     return parseJSON(text);
