@@ -486,8 +486,6 @@ function TwitterTab({ content, assets }: { content: GeneratedContent; assets: Me
   );
 }
 
-// ─── Tab: Case Study ─────────────────────────────────────────────────────────
-
 // ─── Main Component ──────────────────────────────────────────────────────────
 
 export default function ResultsDashboard({ content, assets, brief, onReset }: Props) {
@@ -499,10 +497,9 @@ export default function ResultsDashboard({ content, assets, brief, onReset }: Pr
     const ig = content.instagramPost;
     const story = content.instagramStory;
     const tw = content.twitter;
-    const cs = content.caseStudy;
 
     const lines: string[] = [
-      `STEPONE CONTENT INTELLIGENCE ENGINE`,
+      `CONTENT ENGINE`,
       `Event: ${brief.eventName} | Brand: ${brief.brandName}`,
       `Generated: ${new Date().toLocaleString()}`,
       `${'='.repeat(60)}`,
@@ -538,27 +535,6 @@ export default function ResultsDashboard({ content, assets, brief, onReset }: Pr
       `TWITTER/X THREAD`,
       `${'─'.repeat(40)}`,
       ...tw.tweets.map((t, i) => `[${i + 1}] ${t}`),
-      '',
-      `${'='.repeat(60)}`,
-      '',
-      `CASE STUDY`,
-      `${'─'.repeat(40)}`,
-      cs.title,
-      '',
-      `Executive Summary:`,
-      cs.executiveSummary,
-      '',
-      `Event Overview:`,
-      cs.eventOverview,
-      '',
-      `Key Highlights:`,
-      ...cs.keyHighlights.map((h) => `• ${h}`),
-      '',
-      `Brand Narrative:`,
-      cs.brandNarrative,
-      '',
-      `Conclusion:`,
-      cs.conclusion,
     ];
 
     return lines.join('\n');

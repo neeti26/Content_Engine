@@ -5,12 +5,12 @@ import './globals.css';
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
 export const metadata: Metadata = {
-  title: 'StepOne Content Intelligence Engine',
+  title: 'Content Engine — AI-Powered Event Marketing',
   description:
     'Transform raw event media into publish-ready marketing assets for LinkedIn, Instagram, and more — powered by AI.',
-  keywords: ['AI', 'marketing', 'content', 'automation', 'StepOne', 'events'],
+  keywords: ['AI', 'marketing', 'content', 'automation', 'events'],
   openGraph: {
-    title: 'StepOne Content Intelligence Engine',
+    title: 'Content Engine — AI-Powered Event Marketing',
     description: 'AI-powered event media to marketing assets pipeline',
     type: 'website',
   },

@@ -175,7 +175,7 @@ export default function ArchitectureView() {
         <div className="p-6 rounded-2xl border" style={{ background: 'rgba(99,102,241,0.05)', borderColor: 'rgba(99,102,241,0.15)' }}>
           <div className="flex items-center gap-2 mb-4">
             <Shield className="w-4 h-4 text-indigo-400" />
-            <h3 className="font-bold text-white text-sm">Why This Solves StepOne's Real Problem</h3>
+            <h3 className="font-bold text-white text-sm">Why This Beats Manual Processing</h3>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {[

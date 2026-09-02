@@ -107,7 +107,7 @@ export default function BriefStep({ assetCount, onSubmit, onBack, errorMsg, onCl
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-white/40 uppercase tracking-wider">Brand Name <span className="text-indigo-400">*</span></label>
                 <input value={form.brandName} onChange={e => set('brandName', e.target.value)}
-                  placeholder="e.g. StepOne" className="input-field w-full rounded-xl px-4 py-3 text-sm" />
+                  placeholder="e.g. Acme Corp" className="input-field w-full rounded-xl px-4 py-3 text-sm" />
               </div>
             </div>
 

@@ -44,7 +44,7 @@ export default function Home() {
 
   const handleDemoMode = () => {
     setBrief({
-      eventName: 'TechSummit 2026', brandName: 'StepOne', eventType: 'Corporate Conference',
+      eventName: 'TechSummit 2026', brandName: 'Acme Corp', eventType: 'Corporate Conference',
       location: 'Mumbai, India', date: '2026-04-15',
       keyHighlights: '500+ attendees, AI keynote with standing ovation, product demo, 8 partnerships formed, 94% satisfaction',
       targetAudience: 'Marketing leaders and CMOs', tone: 'professional',

@@ -16,10 +16,9 @@ const steps = [
   { label: 'Scoring all photos with AI Vision', pct: 5 },
   { label: 'Selecting best asset per platform', pct: 35 },
   { label: 'Generating LinkedIn post', pct: 50 },
-  { label: 'Generating Instagram caption', pct: 60 },
-  { label: 'Generating Story overlay', pct: 70 },
-  { label: 'Generating Twitter/X thread', pct: 78 },
-  { label: 'Generating case study draft', pct: 86 },
+  { label: 'Generating Instagram caption', pct: 62 },
+  { label: 'Generating Story overlay', pct: 74 },
+  { label: 'Generating Twitter/X thread', pct: 88 },
   { label: 'Packaging all outputs', pct: 96 },
 ];
 
@@ -30,7 +29,6 @@ const insights = [
   { emoji: '📸', text: 'Writing scroll-stopping Instagram captions with strategic hashtags...' },
   { emoji: '⚡', text: 'Designing Instagram Story text overlays for maximum 3-second impact...' },
   { emoji: '🐦', text: 'Building a viral Twitter/X thread with hooks and engagement triggers...' },
-  { emoji: '📊', text: 'Generating a comprehensive case study with impact metrics...' },
   { emoji: '✨', text: 'Finalizing your publish-ready content package...' },
 ];
 
@@ -132,7 +130,7 @@ export default function ProcessingView({ onComplete, onError, processingPromise 
           <div className="h-2 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)' }}>
             <motion.div
               className="h-full rounded-full"
-              style={{ background: 'linear-gradient(90deg, #4f46e5, #818cf8, #f97316)' }}
+              style={{ background: 'linear-gradient(90deg, #4f46e5, #818cf8, #c4b5fd)' }}
               animate={{ width: `${progress}%` }}
               transition={{ duration: 0.8, ease: 'easeOut' }}
             />
@@ -169,8 +167,8 @@ export default function ProcessingView({ onComplete, onError, processingPromise 
 
         {/* Output chips */}
         <div className="flex flex-wrap gap-2 justify-center mb-5">
-          {['LinkedIn', 'Instagram', 'IG Story', 'Twitter/X', 'Case Study'].map((label, i) => {
-            const done = progress >= (i + 1) * 18;
+          {['LinkedIn', 'Instagram', 'IG Story', 'Twitter/X'].map((label, i) => {
+            const done = progress >= (i + 1) * 22;
             return (
               <span key={label} className={`text-xs px-3 py-1.5 rounded-full border transition-all ${done ? 'text-emerald-400 border-emerald-500/30' : 'text-gray-700 border-gray-800'}`}
                 style={{ background: done ? 'rgba(52,211,153,0.08)' : 'rgba(255,255,255,0.02)' }}>
