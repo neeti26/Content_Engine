@@ -10,6 +10,17 @@ html, body { max-width: 100vw; overflow-x: hidden; font-family: 'Inter', system-
 ::-webkit-scrollbar-thumb { background: #2a2a3d; border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: #6366f1; }
 
+/* ── Dot-grid background ── */
+.dot-grid {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: radial-gradient(rgba(255,255,255,0.055) 1px, transparent 1px);
+  background-size: 28px 28px;
+  mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 30%, transparent 100%);
+  -webkit-mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 30%, transparent 100%);
+}
+
 /* ── Glass ── */
 .glass {
   background: rgba(255,255,255,0.05);
@@ -32,7 +43,7 @@ html, body { max-width: 100vw; overflow-x: hidden; font-family: 'Inter', system-
 /* ── Animated border ── */
 @keyframes borderPulse {
   0%,100% { border-color: rgba(99,102,241,0.5); }
-  50%     { border-color: rgba(249,115,22,0.4); }
+  50%     { border-color: rgba(139,92,246,0.5); }
 }
 .border-animated { animation: borderPulse 3s ease-in-out infinite; }
 
