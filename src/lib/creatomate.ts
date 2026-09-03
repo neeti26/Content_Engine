@@ -1,6 +1,9 @@
 /**
  * Creatomate integration — renders a real 9:16 1080×1920 Instagram Reel .mp4
- * Uses the official Creatomate SDK typed classes (Source, Composition, Image, Video, Text, Fade)
+ *
+ * Key insight: Creatomate does NOT support data: URIs as asset sources.
+ * Assets must be uploaded to Creatomate's storage first via their REST API,
+ * which returns a public URL that can then be used in the render source.
  */
 
 import {
@@ -14,6 +17,7 @@ type AnyElement = ElementBase<any>;
 
 const REEL_WIDTH  = 1080;
 const REEL_HEIGHT = 1920;
+const CREATOMATE_API = 'https://api.creatomate.com/v1';
 
 function parseDuration(str: string): number {
   const range = str.match(/(\d+)\s*-\s*(\d+)/);
@@ -22,34 +26,53 @@ function parseDuration(str: string): number {
   return single ? parseInt(single[1]) : 5;
 }
 
-// Compress base64 image further for Creatomate inline data (400px, q0.55 → ~15-30KB each)
-async function compressForCreatomate(base64: string, mimeType: string): Promise<string> {
-  // Server-side: use sharp if available, else return as-is
-  // Since we're in Next.js serverless, we use a simple re-encode via Buffer
-  // The images are already compressed to 800px by the client — we just return them
-  // Creatomate actually supports data URIs fine; the issue is elsewhere
-  return base64;
-}
+/**
+ * Upload a base64 image/video to Creatomate's asset storage.
+ * Returns a public URL Creatomate can fetch during rendering.
+ */
+async function uploadAsset(
+  base64: string,
+  mimeType: string,
+  filename: string,
+  apiKey: string,
+): Promise<string> {
+  // Convert base64 to binary buffer
+  const binary = Buffer.from(base64, 'base64');
 
-function toDataUri(asset: MediaAsset): string {
-  const mime = asset.mimeType || 'image/jpeg';
-  return `data:${mime};base64,${asset.base64}`;
+  const formData = new FormData();
+  const blob = new Blob([binary], { type: mimeType });
+  formData.append('file', blob, filename);
+
+  const res = await fetch(`${CREATOMATE_API}/assets`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: formData,
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`Creatomate asset upload failed (${res.status}): ${text.slice(0, 200)}`);
+  }
+
+  const data = await res.json() as { url: string };
+  return data.url;
 }
 
 function buildSceneElements(
   shot: ShotListItem,
-  asset: MediaAsset,
+  assetUrl: string,
+  isVideo: boolean,
   duration: number,
 ): AnyElement[] {
-  const isVideo  = asset.type === 'video';
   const isHook   = shot.shot === 1;
   const elements: AnyElement[] = [];
 
-  // Background media element
   if (isVideo) {
     elements.push(new Video({
       track: 1,
-      source: toDataUri(asset),
+      source: assetUrl,
       fit: 'cover' as Fit,
       trimDuration: duration,
       width: '100%',
@@ -62,7 +85,7 @@ function buildSceneElements(
   } else {
     elements.push(new Image({
       track: 1,
-      source: toDataUri(asset),
+      source: assetUrl,
       fit: 'cover' as Fit,
       duration,
       width: '100%',
@@ -74,7 +97,6 @@ function buildSceneElements(
     }));
   }
 
-  // Text overlay
   if (shot.onScreenText?.trim()) {
     elements.push(new Text({
       track: 2,
@@ -121,21 +143,36 @@ export async function submitReelRender(
     return { renderId: '', status: 'failed', errorMessage: 'API key not configured' };
   }
 
+  // Step 1: Upload all unique assets to Creatomate storage → get public URLs
+  console.log(`[Creatomate] Uploading ${assets.length} assets...`);
+  const assetUrls: string[] = [];
+  for (let i = 0; i < assets.length; i++) {
+    const asset = assets[i];
+    const ext = asset.type === 'video' ? 'mp4' : 'jpg';
+    const url = await uploadAsset(
+      asset.base64,
+      asset.mimeType || (asset.type === 'video' ? 'video/mp4' : 'image/jpeg'),
+      `asset-${i}.${ext}`,
+      apiKey,
+    );
+    assetUrls.push(url);
+    console.log(`[Creatomate] Uploaded asset ${i + 1}/${assets.length}: ${url}`);
+  }
+
   const client = new Client(apiKey);
 
-  // Build one Composition per shot
+  // Step 2: Build scenes using uploaded URLs
   const scenes: Composition[] = reel.shotList.map((shot, i) => {
     const asset    = assets[i % assets.length];
+    const assetUrl = assetUrls[i % assetUrls.length];
     const duration = parseDuration(shot.duration);
     const isFirst  = i === 0;
 
     return new Composition({
       track: 1,
       duration,
-      ...(!isFirst ? {
-        animations: [new Fade({ time: 0, duration: 0.5, transition: true })],
-      } : {}),
-      elements: buildSceneElements(shot, asset, duration),
+      ...(!isFirst ? { animations: [new Fade({ time: 0, duration: 0.5, transition: true })] } : {}),
+      elements: buildSceneElements(shot, assetUrl, asset.type === 'video', duration),
     });
   });
 
@@ -192,12 +229,10 @@ export async function submitReelRender(
     elements: [...scenes, outro],
   });
 
-  const totalDuration = reel.shotList.reduce((sum, s) => sum + parseDuration(s.duration), 0) + 2.5;
-  console.log(`[Creatomate] Submitting render — shots=${reel.shotList.length}, duration=${totalDuration}s, assets=${assets.length}`);
+  const totalDuration = reel.shotList.reduce((s, sh) => s + parseDuration(sh.duration), 0) + 2.5;
+  console.log(`[Creatomate] Submitting render — shots=${reel.shotList.length}, duration=${totalDuration}s`);
 
   try {
-    // Use startRender (async) — don't block the API response
-    // The client polls /api/reel-status/[renderId] for completion
     const renders = await client.startRender({ source });
     const render  = renders[0];
     console.log(`[Creatomate] Submitted — id=${render.id}, status=${render.status}, error=${render.errorMessage ?? 'none'}`);
@@ -222,7 +257,6 @@ export async function fetchReelStatus(renderId: string): Promise<ReelRenderResul
   if (!apiKey) return { renderId, status: 'failed', errorMessage: 'API key not configured' };
 
   const client = new Client(apiKey);
-
   try {
     const render = await client.fetchRender(renderId);
     console.log(`[Creatomate] Poll — id=${render.id}, status=${render.status}, error=${render.errorMessage ?? 'none'}`);
