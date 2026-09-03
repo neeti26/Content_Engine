@@ -14,36 +14,69 @@ function getClientIp(req: NextRequest): string {
   );
 }
 
-function friendlyError(err: unknown): string {
+function friendlyError(err: unknown): { message: string; retryable: boolean } {
   const msg = err instanceof Error ? err.message : String(err);
 
+  if (msg.includes('GEMINI_API_KEY') || msg.includes('not configured')) {
+    return {
+      message: 'The AI service is not configured. Please add your GEMINI_API_KEY in Vercel environment variables.',
+      retryable: false,
+    };
+  }
   if (msg.includes('RESOURCE_EXHAUSTED') || msg.includes('quota') || msg.includes('429')) {
-    return "We've hit our AI quota for right now. This resets shortly — please try again in a few minutes.";
+    return {
+      message: "AI quota reached. This resets shortly — please try again in a few minutes.",
+      retryable: true,
+    };
   }
-  if (msg.includes('Empty response') || msg.includes('invalid JSON')) {
-    return 'The AI returned an unexpected response. This is usually temporary — please try again.';
+  if (msg.includes('Empty response') || msg.includes('invalid JSON') || msg.includes('Cannot parse')) {
+    return {
+      message: 'The AI returned an unexpected response. Please try again.',
+      retryable: true,
+    };
   }
-  if (msg.includes('fetch failed') || msg.includes('ECONNREFUSED') || msg.includes('network')) {
-    return 'Could not reach the AI service. Please check your connection and try again.';
+  if (msg.includes('fetch failed') || msg.includes('ECONNREFUSED') || msg.includes('network') || msg.includes('ETIMEDOUT')) {
+    return {
+      message: 'Could not reach the AI service. Please check your connection and try again.',
+      retryable: true,
+    };
+  }
+  if (msg.includes('Server error (413)') || msg.includes('Request Entity Too Large')) {
+    return {
+      message: 'Your images are too large to process. Please use fewer or smaller photos.',
+      retryable: false,
+    };
   }
 
-  return 'Something went wrong while generating your content. Please try again.';
+  console.error('[Pipeline error] Unhandled:', msg);
+  return {
+    message: 'Something went wrong while generating your content. Please try again.',
+    retryable: true,
+  };
 }
 
 export async function POST(req: NextRequest) {
-  const ip = getClientIp(req);
+  // Log startup — visible in Vercel function logs
+  const hasKey = !!process.env.GEMINI_API_KEY;
+  console.log(`[Process] Request received. GEMINI_API_KEY configured: ${hasKey}`);
 
-  // Rate limit: 5 generations per IP per hour
+  if (!hasKey) {
+    console.error('[Config] GEMINI_API_KEY is not set. Set it in Vercel → Settings → Environment Variables.');
+    return NextResponse.json(
+      { error: 'The AI service is not configured. Please add GEMINI_API_KEY to your Vercel environment variables, then redeploy.' },
+      { status: 503 }
+    );
+  }
+
+  const ip = getClientIp(req);
   const limit = checkRateLimit(ip, 5, 60 * 60 * 1000);
   if (!limit.allowed) {
     const resetIn = Math.ceil((limit.resetAt - Date.now()) / 60000);
     return NextResponse.json(
-      { error: `You've reached the limit of 5 generations per hour. Try again in ${resetIn} minute${resetIn !== 1 ? 's' : ''}.` },
+      { error: `Rate limit reached — ${resetIn} minute${resetIn !== 1 ? 's' : ''} until reset.` },
       {
         status: 429,
-        headers: {
-          'Retry-After': String(Math.ceil((limit.resetAt - Date.now()) / 1000)),
-        },
+        headers: { 'Retry-After': String(Math.ceil((limit.resetAt - Date.now()) / 1000)) },
       }
     );
   }
@@ -51,32 +84,34 @@ export async function POST(req: NextRequest) {
   let body: { brief: EventBrief; assets: MediaAsset[] };
   try {
     body = await req.json() as { brief: EventBrief; assets: MediaAsset[] };
-  } catch {
-    return NextResponse.json({ error: 'Invalid request.' }, { status: 400 });
+  } catch (e) {
+    console.error('[Process] Failed to parse request body:', e);
+    return NextResponse.json({ error: 'Invalid request body.' }, { status: 400 });
   }
 
   const { brief, assets } = body;
 
-  if (!brief || !assets || assets.length === 0) {
-    return NextResponse.json({ error: 'Missing event brief or photos.' }, { status: 400 });
-  }
-  if (assets.length > 20) {
-    return NextResponse.json({ error: 'Maximum 20 photos allowed.' }, { status: 400 });
+  if (!brief) return NextResponse.json({ error: 'Missing event brief.' }, { status: 400 });
+  if (!brief.eventName?.trim()) return NextResponse.json({ error: 'Event name is required.' }, { status: 400 });
+  if (!brief.brandName?.trim()) return NextResponse.json({ error: 'Brand name is required.' }, { status: 400 });
+  if (!assets || assets.length === 0) return NextResponse.json({ error: 'Please upload at least one photo.' }, { status: 400 });
+  if (assets.length > 20) return NextResponse.json({ error: 'Maximum 20 files allowed.' }, { status: 400 });
+
+  // Validate assets have base64 data
+  const invalid = assets.filter(a => !a.base64 || a.base64.length < 100);
+  if (invalid.length > 0) {
+    return NextResponse.json({ error: `${invalid.length} file(s) failed to upload correctly. Please try again.` }, { status: 400 });
   }
 
-  if (!process.env.GEMINI_API_KEY) {
-    console.error('[Config] GEMINI_API_KEY is not set in environment variables');
-    return NextResponse.json(
-      { error: 'Service is not configured yet. Please check back soon.' },
-      { status: 503 }
-    );
-  }
+  console.log(`[Process] Starting pipeline: ${assets.length} assets, event="${brief.eventName}", instagram=${brief.instagramType}`);
 
   try {
     const result = await runPipeline(brief, assets);
+    console.log(`[Process] Pipeline complete for "${brief.eventName}"`);
     return NextResponse.json({ result }, { status: 200 });
   } catch (err) {
     console.error('[Pipeline error]', err);
-    return NextResponse.json({ error: friendlyError(err) }, { status: 500 });
+    const { message, retryable } = friendlyError(err);
+    return NextResponse.json({ error: message, retryable }, { status: 500 });
   }
 }

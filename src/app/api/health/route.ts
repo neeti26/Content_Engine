@@ -5,6 +5,7 @@ export async function GET() {
     status: 'ok',
     timestamp: new Date().toISOString(),
     version: '1.0.0',
-    service: 'StepOne Content Intelligence Engine',
+    service: 'Content Engine',
+    geminiConfigured: !!process.env.GEMINI_API_KEY,
   });
 }
