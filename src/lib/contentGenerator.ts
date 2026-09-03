@@ -150,33 +150,47 @@ Return this JSON:
 
 export async function generateInstagramReelContent(brief: EventBrief, asset: AssetWithDesc): Promise<InstagramReelContent> {
   const result = await generateJSON<InstagramReelContent>(
-    `You are a professional Instagram Reel director and scriptwriter. Create detailed, production-ready Reel scripts. Tone: ${brief.tone}.`,
-    `Create a complete Instagram Reel script for this event:
-Event: ${brief.eventName} by ${brief.brandName}
-Type: ${brief.eventType}, Location: ${brief.location}
-Highlights: ${brief.keyHighlights}
-Target Audience: ${brief.targetAudience}
-Visual context: ${asset.description ?? 'dynamic event moments'}
+    `You are a world-class Instagram Reel director. You create viral, emotionally engaging 30-second Reels for brand events. You write scripts that match the actual footage available. Tone: ${brief.tone}.`,
+    `Create a production-ready 30-second Instagram Reel script for this event.
 
-Return this JSON:
+EVENT DETAILS:
+- Name: ${brief.eventName}
+- Brand: ${brief.brandName}
+- Type: ${brief.eventType}
+- Location: ${brief.location}
+- Date: ${brief.date}
+- Highlights: ${brief.keyHighlights}
+- Target Audience: ${brief.targetAudience}
+- Visual available: ${asset.description ?? 'event photos and video clips'}
+
+INSTRUCTIONS:
+- The hook (shot 1) must be 3 seconds and stop scrolling — ALL CAPS, maximum impact
+- Each shot description tells the video editor exactly what clip/photo to use
+- On-screen text must be SHORT (max 6 words), bold, matches the energy of the shot
+- The voiceover should match each shot timing precisely
+- Music mood should match brand tone
+- Caption should feel personal and end with a question to drive comments
+- Hashtags should mix broad (#Reels) and niche (#${brief.eventType.replace(/\s+/g, '')})
+
+Return ONLY this JSON (no extra text):
 {
-  "hook": "first 3 seconds on-screen text — must stop the scroll, max 8 words, ALL CAPS",
+  "hook": "ALL CAPS scroll-stopping text, max 8 words — e.g. WE JUST CHANGED THE GAME",
   "duration": "30s",
   "shotList": [
-    {"shot": 1, "duration": "0-3s",  "description": "what the camera shows", "onScreenText": "text overlay"},
-    {"shot": 2, "duration": "3-8s",  "description": "what the camera shows", "onScreenText": "text overlay"},
-    {"shot": 3, "duration": "8-14s", "description": "what the camera shows", "onScreenText": "text overlay"},
-    {"shot": 4, "duration": "14-20s","description": "what the camera shows", "onScreenText": "text overlay"},
-    {"shot": 5, "duration": "20-26s","description": "what the camera shows", "onScreenText": "text overlay"},
-    {"shot": 6, "duration": "26-30s","description": "closing shot",         "onScreenText": "CTA text"}
+    {"shot": 1, "duration": "0-3s",  "description": "Dramatic reveal — best single hero image or opening video clip, full frame", "onScreenText": "HOOK TEXT HERE"},
+    {"shot": 2, "duration": "3-8s",  "description": "Crowd or attendee energy shots — faces, reactions, excitement", "onScreenText": "Short punchy text"},
+    {"shot": 3, "duration": "8-14s", "description": "Key moment or highlight — keynote, product demo, or standout visual", "onScreenText": "Key stat or moment"},
+    {"shot": 4, "duration": "14-20s","description": "Behind the scenes or candid moments — authentic, human", "onScreenText": "Brand voice text"},
+    {"shot": 5, "duration": "20-26s","description": "Brand showcase — logo, stage, banners, branded moments", "onScreenText": "Brand name or tagline"},
+    {"shot": 6, "duration": "26-30s","description": "Closing wide shot or best group photo — epic final frame", "onScreenText": "Call to action"}
   ],
-  "voiceoverScript": "complete 30-second voiceover script matching the shot list, punchy and energetic",
-  "musicMood": "e.g. Upbeat corporate pop, High energy EDM, Cinematic orchestral",
-  "caption": "Reel caption with hook emoji, 2 short sentences, ends with question, max 100 words",
-  "hashtags": ["#Reels","#Events","#Brand","#Marketing","#EventMarketing","#BehindTheScenes","#BusinessEvents","#Networking","#Conference","#Innovation","#Leadership","#Growth","#Success","#Community","#Viral"],
+  "voiceoverScript": "A punchy, energetic 30-second voiceover script. Match each sentence to the shot it covers. Use short sentences. Build to a climax. End with CTA.",
+  "musicMood": "Specific music style that fits brand tone — e.g. High-energy hip-hop, Cinematic orchestral swell, Upbeat indie pop",
+  "caption": "Hook emoji + 2 punchy sentences referencing actual event highlights + question to drive comments. Max 80 words.",
+  "hashtags": ["#Reels","#${brief.brandName.replace(/\s+/g, '')}","#${brief.eventName.replace(/\s+/g, '')}","#EventMarketing","#BehindTheScenes","#${brief.eventType.replace(/\s+/g, '')}","#Marketing","#Brand","#BusinessEvents","#Networking","#Innovation","#Leadership","#Growth","#Viral","#ContentCreator"],
   "selectedImageId": "${asset.id}"
 }`,
-    1800
+    2000
   );
   return { ...result, selectedImageId: asset.id };
 }
