@@ -1,5 +1,6 @@
 import { EventBrief, MediaAsset, GeneratedContent } from '@/types';
 import { scoreAllAssets, selectBestAssets } from './assetScorer';
+import { submitReelRender } from './creatomate';
 import {
   generateLinkedInContent,
   generateInstagramPostContent,
@@ -130,14 +131,36 @@ export async function runPipeline(
 
   console.log(`[Pipeline] All generators complete`);
 
+  // If reel mode: submit Creatomate render asynchronously.
+  // This fires off the render job and returns a renderId immediately.
+  // The client polls /api/reel-status/[renderId] for the final videoUrl.
+  let finalReelContent = isReel
+    ? (instagramResult as unknown as Awaited<ReturnType<typeof generateInstagramReelContent>>)
+    : undefined;
+
+  if (isReel && finalReelContent && process.env.CREATOMATE_API_KEY) {
+    try {
+      console.log('[Pipeline] Submitting Creatomate Reel render...');
+      const renderResult = await submitReelRender(finalReelContent, assets, brief.brandName);
+      finalReelContent = {
+        ...finalReelContent,
+        renderId:     renderResult.renderId,
+        renderStatus: renderResult.status,
+        videoUrl:     renderResult.videoUrl,
+      };
+      console.log(`[Pipeline] Creatomate render submitted: id=${renderResult.renderId}`);
+    } catch (err) {
+      // Non-fatal — user still gets the script even if render submission fails
+      console.error('[Pipeline] Creatomate render submission failed:', String(err).slice(0, 200));
+    }
+  }
+
   return {
     linkedin,
     instagramPost: isReel
       ? { caption: '', hashtags: [], emojis: [], selectedImageId: reelAsset.id, characterCount: 0 }
       : (instagramResult as Awaited<ReturnType<typeof generateInstagramPostContent>>),
-    instagramReel: isReel
-      ? (instagramResult as unknown as Awaited<ReturnType<typeof generateInstagramReelContent>>)
-      : undefined,
+    instagramReel: isReel ? finalReelContent : undefined,
     instagramStory,
     twitter,
     whatsapp,

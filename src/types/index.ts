@@ -76,6 +76,10 @@ export interface InstagramReelContent {
   caption: string;
   hashtags: string[];
   selectedImageId: string;
+  // Creatomate render fields — populated after video render is submitted
+  videoUrl?: string;
+  renderId?: string;
+  renderStatus?: 'pending' | 'rendering' | 'done' | 'failed';
 }
 
 export interface ShotListItem {

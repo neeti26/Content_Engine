@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { EventBrief, MediaAsset } from '@/types';
 import { runPipeline } from '@/lib/pipeline';
+import { hasAnyGeminiKey } from '@/lib/gemini';
 import { checkRateLimit } from '@/lib/rateLimit';
 
 export const maxDuration = 300;
@@ -57,13 +58,13 @@ function friendlyError(err: unknown): { message: string; retryable: boolean } {
 
 export async function POST(req: NextRequest) {
   // Log startup — visible in Vercel function logs
-  const hasKey = !!process.env.GEMINI_API_KEY;
-  console.log(`[Process] Request received. GEMINI_API_KEY configured: ${hasKey}`);
+  const hasKey = hasAnyGeminiKey();
+  console.log(`[Process] Request received. Gemini keys configured: ${hasKey}`);
 
   if (!hasKey) {
-    console.error('[Config] GEMINI_API_KEY is not set. Set it in Vercel → Settings → Environment Variables.');
+    console.error('[Config] No Gemini API key found. Add GEMINI_API_KEY_1 (and optionally _2, _3) to Vercel environment variables.');
     return NextResponse.json(
-      { error: 'The AI service is not configured. Please add GEMINI_API_KEY to your Vercel environment variables, then redeploy.' },
+      { error: 'The AI service is not configured. Add GEMINI_API_KEY_1 to your Vercel environment variables, then redeploy.' },
       { status: 503 }
     );
   }

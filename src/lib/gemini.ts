@@ -1,96 +1,126 @@
 ﻿import { GoogleGenAI } from "@google/genai";
 
-function getAI(): GoogleGenAI {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new Error("GEMINI_API_KEY is not configured");
+// ─── Multi-key rotation ───────────────────────────────────────────────────────
+// Supports GEMINI_API_KEY_1 … GEMINI_API_KEY_N plus the legacy GEMINI_API_KEY.
+// Keys are tried in round-robin order. On a rate-limit hit the next key is used
+// immediately instead of waiting, effectively multiplying the free-tier quota.
+
+function getAvailableKeys(): string[] {
+  const keys: string[] = [];
+  // Numbered keys take priority (GEMINI_API_KEY_1, _2, _3 …)
+  for (let i = 1; i <= 10; i++) {
+    const k = process.env[`GEMINI_API_KEY_${i}`];
+    if (k?.trim()) keys.push(k.trim());
+  }
+  // Fallback: legacy single key
+  const legacy = process.env.GEMINI_API_KEY?.trim();
+  if (legacy && !keys.includes(legacy)) keys.push(legacy);
+  return keys;
+}
+
+// Module-level round-robin index — persists across requests in the same serverless instance
+let _keyIndex = 0;
+
+function nextKey(): string {
+  const keys = getAvailableKeys();
+  if (keys.length === 0) throw new Error("No GEMINI_API_KEY configured. Add GEMINI_API_KEY_1 (and optionally _2, _3) to your Vercel environment variables.");
+  const key = keys[_keyIndex % keys.length];
+  _keyIndex = (_keyIndex + 1) % keys.length;
+  return key;
+}
+
+function getAI(apiKey: string): GoogleGenAI {
   return new GoogleGenAI({ apiKey });
 }
 
-// Models tried in order — flash is best quality, 8b is fallback
-const MODELS = ["gemini-1.5-flash", "gemini-1.5-flash-8b"];
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
-// ─── JSON Parser ──────────────────────────────────────────────────────────────
-// Tries three strategies to extract valid JSON from Gemini's response.
-function parseJSON<T>(text: string): T {
-  if (!text || text.trim() === "") throw new Error("Empty response from Gemini");
-
-  // 1. Strip <think>...</think> reasoning blocks (some model variants prepend these)
-  const stripped = text.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
-  const src = stripped || text.trim();
-
-  // 2. Direct parse
-  try { return JSON.parse(src) as T; } catch { /* try next */ }
-
-  // 3. Extract from fenced code block
-  const fenced = src.match(/```(?:json)?[\r\n]*([\s\S]*?)```/);
-  if (fenced?.[1]) {
-    try { return JSON.parse(fenced[1].trim()) as T; } catch { /* try next */ }
-  }
-
-  // 4. Brace-depth scan — find the outermost { } pair
-  let depth = 0, start = -1, end = -1;
-  for (let i = 0; i < src.length; i++) {
-    if (src[i] === "{") { if (depth === 0) start = i; depth++; }
-    else if (src[i] === "}") { depth--; if (depth === 0) { end = i; break; } }
-  }
-  if (start !== -1 && end !== -1) {
-    try { return JSON.parse(src.slice(start, end + 1)) as T; } catch { /* fail below */ }
-  }
-
-  console.error("[Gemini] Cannot parse response. Raw (first 600 chars):", text.slice(0, 600));
-  throw new Error("Gemini returned invalid JSON. Raw: " + text.slice(0, 200));
+export function hasAnyGeminiKey(): boolean {
+  return getAvailableKeys().length > 0;
 }
 
-// ─── Retry / Model Fallback ───────────────────────────────────────────────────
-async function withRetry<T>(fn: (model: string) => Promise<T>): Promise<T> {
+// ─── Models ───────────────────────────────────────────────────────────────────
+const MODELS = ["gemini-1.5-flash", "gemini-1.5-flash-8b"];
+const sleep  = (ms: number) => new Promise<void>(r => setTimeout(r, ms));
+
+// ─── JSON Parser ──────────────────────────────────────────────────────────────
+function parseJSON<T>(text: string): T {
+  if (!text?.trim()) throw new Error("Empty response from Gemini");
+
+  // Strip <think>...</think> reasoning blocks
+  const src = text.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
+
+  // 1. Direct parse
+  try { return JSON.parse(src) as T; } catch { /* next */ }
+
+  // 2. Fenced code block
+  const fenced = src.match(/```(?:json)?[\r\n]*([\s\S]*?)```/);
+  if (fenced?.[1]) { try { return JSON.parse(fenced[1].trim()) as T; } catch { /* next */ } }
+
+  // 3. Brace-depth scan — find outermost { }
+  let depth = 0, start = -1, end = -1;
+  for (let i = 0; i < src.length; i++) {
+    if (src[i] === "{") { if (!depth) start = i; depth++; }
+    else if (src[i] === "}") { if (!--depth) { end = i; break; } }
+  }
+  if (start !== -1 && end !== -1) {
+    try { return JSON.parse(src.slice(start, end + 1)) as T; } catch { /* fail */ }
+  }
+
+  console.error("[Gemini] Cannot parse. Raw (600 chars):", text.slice(0, 600));
+  throw new Error("Gemini returned invalid JSON: " + text.slice(0, 200));
+}
+
+// ─── Retry / Key+Model Fallback ───────────────────────────────────────────────
+// Strategy: for each available key, try each model up to 3 times.
+// On rate-limit: immediately rotate to the next key (no wait) — this is the main
+// benefit of multi-key rotation. Only wait if we've exhausted all keys.
+async function withRetry<T>(fn: (ai: GoogleGenAI, model: string) => Promise<T>): Promise<T> {
+  const keys = getAvailableKeys();
+  if (!keys.length) throw new Error("No GEMINI_API_KEY configured");
+
   let lastErr: unknown;
+  let rateLimitRound = 0;
 
-  for (const model of MODELS) {
-    for (let attempt = 0; attempt < 3; attempt++) {
-      try {
-        const result = await fn(model);
-        if (attempt > 0 || model !== MODELS[0]) {
-          console.log(`[Gemini] Success with model=${model} attempt=${attempt + 1}`);
+  // Outer loop: rotate through keys on rate-limit
+  for (let keyTry = 0; keyTry < keys.length * 2; keyTry++) {
+    const apiKey = keys[(_keyIndex + keyTry) % keys.length];
+    const ai     = getAI(apiKey);
+
+    for (const model of MODELS) {
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          const result = await fn(ai, model);
+          // Advance global index so next call starts from the next key
+          _keyIndex = (_keyIndex + keyTry + 1) % keys.length;
+          return result;
+        } catch (err) {
+          lastErr = err;
+          const msg = String(err);
+
+          const isAuth      = msg.includes("401") || msg.includes("API_KEY") || msg.includes("UNAUTHENTICATED") || msg.includes("not configured");
+          const isRateLimit = msg.includes("429") || msg.includes("RESOURCE_EXHAUSTED") || msg.includes("Too Many") || msg.includes("quota");
+          const isModelErr  = msg.includes("404") || msg.includes("not found") || msg.includes("deprecated") || msg.includes("INVALID_ARGUMENT");
+
+          if (isAuth) {
+            console.error(`[Gemini] Auth error on key index ${keyTry}: ${msg.slice(0, 120)}`);
+            break; // try next key
+          }
+          if (isRateLimit) {
+            rateLimitRound++;
+            console.warn(`[Gemini] Rate limit on key ${keyTry + 1}/${keys.length} model=${model}. Rotating key.`);
+            // If we've tried all keys and still hitting limits, wait before next round
+            if (rateLimitRound >= keys.length && attempt < 2) {
+              await sleep(rateLimitRound * 5000);
+            }
+            break; // immediately try next key
+          }
+          if (isModelErr) {
+            console.warn(`[Gemini] Model ${model} unavailable, trying next model`);
+            break; // try next model
+          }
+
+          console.error(`[Gemini] Error key=${keyTry} model=${model} attempt=${attempt + 1}: ${msg.slice(0, 150)}`);
+          if (attempt < 2) await sleep(1500); // brief wait before retry on transient errors
         }
-        return result;
-      } catch (err) {
-        lastErr = err;
-        const msg = String(err);
-
-        const isModelError = msg.includes("404") || msg.includes("not found") ||
-          msg.includes("not supported") || msg.includes("INVALID_ARGUMENT") ||
-          msg.includes("deprecated");
-
-        const isRateLimit = msg.includes("429") || msg.includes("quota") ||
-          msg.includes("Too Many") || msg.includes("RESOURCE_EXHAUSTED");
-
-        const isAuth = msg.includes("401") || msg.includes("API key") ||
-          msg.includes("UNAUTHENTICATED") || msg.includes("not configured");
-
-        // Auth errors are fatal — no point retrying
-        if (isAuth) {
-          console.error(`[Gemini] Auth error — check GEMINI_API_KEY: ${msg}`);
-          throw err;
-        }
-
-        // Model unavailable — skip to next model immediately
-        if (isModelError) {
-          console.warn(`[Gemini] Model ${model} unavailable, trying next`);
-          break;
-        }
-
-        // Rate limit — exponential backoff then retry same model
-        if (isRateLimit && attempt < 2) {
-          const wait = (attempt + 1) * 8000;
-          console.log(`[Gemini] Rate limit on ${model}, waiting ${wait / 1000}s (attempt ${attempt + 1})`);
-          await sleep(wait);
-          continue;
-        }
-
-        // Other errors — log and try next model
-        console.error(`[Gemini] Error on model=${model} attempt=${attempt + 1}:`, msg.slice(0, 200));
-        break;
       }
     }
   }
@@ -107,39 +137,32 @@ export async function scoreAndDescribeImage(
   sharpness: number; composition: number; brandRelevance: number;
   humanEngagement: number; overall: number; reasoning: string; description: string;
 }> {
-  return withRetry(async (modelName) => {
-    const res = await getAI().models.generateContent({
-      model: modelName,
+  return withRetry(async (ai, model) => {
+    const res = await ai.models.generateContent({
+      model,
       contents: [{
         role: "user",
         parts: [
           { inlineData: { data: base64Image, mimeType } },
-          {
-            text: `Score this event photo for marketing use. Event context: ${eventContext}
-
-Respond with ONLY this JSON object (no extra text, no markdown):
-{"sharpness":7,"composition":8,"brandRelevance":6,"humanEngagement":9,"overall":7.5,"reasoning":"one sentence","description":"what you see in 10 words"}`
-          },
+          { text: `Score this event photo for marketing use. Event: ${eventContext}\n\nRespond with ONLY this JSON (no extra text, no markdown):\n{"sharpness":7,"composition":8,"brandRelevance":6,"humanEngagement":9,"overall":7.5,"reasoning":"one sentence","description":"what you see in 10 words"}` },
         ],
       }],
       config: { maxOutputTokens: 600, temperature: 0.1 },
     });
 
-    const text = res.text ?? "";
     const parsed = parseJSON<{
       sharpness: number; composition: number; brandRelevance: number;
       humanEngagement: number; overall: number; reasoning: string; description: string;
-    }>(text);
+    }>(res.text ?? "");
 
-    // Ensure all numeric fields are valid numbers
     return {
       sharpness:       Number(parsed.sharpness)       || 5,
       composition:     Number(parsed.composition)     || 5,
       brandRelevance:  Number(parsed.brandRelevance)  || 5,
       humanEngagement: Number(parsed.humanEngagement) || 5,
       overall:         Number(parsed.overall)         || 5,
-      reasoning:       parsed.reasoning  ?? '',
-      description:     parsed.description ?? 'Event photo',
+      reasoning:       parsed.reasoning   ?? "",
+      description:     parsed.description ?? "Event photo",
     };
   });
 }
@@ -150,26 +173,17 @@ export async function generateJSON<T>(
   userPrompt: string,
   maxTokens = 2000
 ): Promise<T> {
-  return withRetry(async (modelName) => {
-    const fullPrompt = `${systemPrompt}
+  return withRetry(async (ai, model) => {
+    const fullPrompt = `${systemPrompt}\n\n---\n\n${userPrompt}\n\n---\n\nCRITICAL: Respond with a single valid JSON object only. Start with { end with }. No markdown, no code fences, no explanation.`;
 
----
-
-${userPrompt}
-
----
-
-CRITICAL INSTRUCTION: Your entire response must be a single valid JSON object. Start with { and end with }. No text before or after. No markdown. No code fences. No explanation.`;
-
-    const res = await getAI().models.generateContent({
-      model: modelName,
+    const res = await ai.models.generateContent({
+      model,
       contents: [{ role: "user", parts: [{ text: fullPrompt }] }],
       config: { maxOutputTokens: maxTokens, temperature: 0.75 },
     });
 
     const text = res.text ?? "";
     if (!text.trim()) throw new Error("Empty response from Gemini");
-
     return parseJSON<T>(text);
   });
 }

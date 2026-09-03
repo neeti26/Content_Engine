@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Linkedin, Instagram, RotateCcw, Copy, Check,
@@ -495,6 +495,39 @@ function ReelTab({ content, assets }: { content: GeneratedContent; assets: Media
   const reel = content.instagramReel;
   const asset = assets.find((a) => a.id === reel?.selectedImageId) ?? assets[0];
 
+  // Polling state for Creatomate render
+  const [renderStatus, setRenderStatus] = useState<'pending' | 'rendering' | 'done' | 'failed' | null>(
+    reel?.renderStatus ?? (reel?.renderId ? 'pending' : null)
+  );
+  const [videoUrl, setVideoUrl] = useState<string | null>(reel?.videoUrl ?? null);
+
+  // Poll render status every 4 seconds until done/failed
+  useEffect(() => {
+    if (!reel?.renderId || renderStatus === 'done' || renderStatus === 'failed' || !reel.renderId) return;
+
+    let cancelled = false;
+    const poll = async () => {
+      try {
+        const res = await fetch(`/api/reel-status/${reel.renderId}`);
+        if (!res.ok || cancelled) return;
+        const data = await res.json() as { status: string; videoUrl?: string };
+        if (cancelled) return;
+        if (data.status === 'done' && data.videoUrl) {
+          setVideoUrl(data.videoUrl);
+          setRenderStatus('done');
+        } else if (data.status === 'failed') {
+          setRenderStatus('failed');
+        } else {
+          setRenderStatus(data.status === 'rendering' ? 'rendering' : 'pending');
+        }
+      } catch { /* network error — keep polling */ }
+    };
+
+    poll(); // immediate first check
+    const interval = setInterval(poll, 4000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, [reel?.renderId, renderStatus]);
+
   if (!reel) return (
     <div className="text-center py-20 text-white/30">
       <p>No Reel content found. Make sure you selected &quot;Reel Script&quot; in the brief.</p>
@@ -519,37 +552,88 @@ function ReelTab({ content, assets }: { content: GeneratedContent; assets: Media
     reel.hashtags.map(h => h.startsWith('#') ? h : `#${h}`).join(' '),
   ].join('\n');
 
+  const hasCreatomate = !!reel.renderId;
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      {/* Left: preview + meta */}
+      {/* Left: video player or preview + meta */}
       <div className="space-y-4">
-        {/* Thumbnail / video preview */}
-        <GlassCard className="p-0 overflow-hidden">
-          <div className="aspect-[9/16] max-h-[480px] w-full bg-gray-900 overflow-hidden rounded-2xl relative">
-            {asset ? (
-              asset.type === 'video' ? (
-                // eslint-disable-next-line jsx-a11y/media-has-caption
-                <video
-                  src={`data:${asset.mimeType};base64,${asset.base64}`}
-                  className="w-full h-full object-cover"
-                  controls
-                  playsInline
-                />
-              ) : (
-                <AssetImg asset={asset} />
-              )
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-gray-700">
-                <Film className="w-12 h-12" />
+
+        {/* Video player — shown when render is complete */}
+        {videoUrl ? (
+          <GlassCard className="p-0 overflow-hidden">
+            <div className="relative rounded-2xl overflow-hidden bg-black" style={{ aspectRatio: '9/16', maxHeight: 520 }}>
+              {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+              <video
+                src={videoUrl}
+                className="w-full h-full object-contain"
+                controls
+                playsInline
+                autoPlay
+                loop
+              />
+              <div className="absolute top-3 left-3 flex items-center gap-1.5 bg-black/70 rounded-full px-3 py-1">
+                <div className="w-2 h-2 rounded-full bg-fuchsia-400" />
+                <span className="text-white text-xs font-bold">1080 × 1920 · MP4</span>
               </div>
-            )}
-            {/* Hook overlay */}
-            <div className="absolute bottom-0 left-0 right-0 p-4"
-              style={{ background: 'linear-gradient(transparent, rgba(0,0,0,0.85))' }}>
-              <p className="text-white font-black text-lg uppercase leading-tight tracking-wide">{reel.hook}</p>
             </div>
-          </div>
-        </GlassCard>
+            <div className="p-4 flex gap-3">
+              <a
+                href={videoUrl}
+                download="reel.mp4"
+                target="_blank"
+                rel="noreferrer"
+                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-white text-sm transition-all"
+                style={{ background: 'linear-gradient(135deg, #7c3aed, #6366f1)', boxShadow: '0 0 24px rgba(124,58,237,0.4)' }}
+              >
+                <Download className="w-4 h-4" />
+                Download Reel (.mp4)
+              </a>
+            </div>
+          </GlassCard>
+        ) : (
+          /* Render status card — shown while Creatomate is working */
+          <GlassCard className="p-0 overflow-hidden">
+            <div className="aspect-[9/16] max-h-[480px] w-full bg-gray-900 overflow-hidden rounded-2xl relative">
+              {asset ? (
+                asset.type === 'video'
+                  // eslint-disable-next-line jsx-a11y/media-has-caption
+                  ? <video src={`data:${asset.mimeType};base64,${asset.base64}`} className="w-full h-full object-cover" controls playsInline />
+                  : <AssetImg asset={asset} />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-gray-700"><Film className="w-12 h-12" /></div>
+              )}
+              {/* Hook overlay */}
+              <div className="absolute bottom-0 left-0 right-0 p-4" style={{ background: 'linear-gradient(transparent, rgba(0,0,0,0.85))' }}>
+                <p className="text-white font-black text-lg uppercase leading-tight tracking-wide">{reel.hook}</p>
+              </div>
+              {/* Render status badge */}
+              {hasCreatomate && (
+                <div className="absolute top-3 left-3 right-3">
+                  {renderStatus === 'pending' || renderStatus === 'rendering' ? (
+                    <div className="flex items-center gap-2 bg-black/80 backdrop-blur rounded-xl px-3 py-2">
+                      <div className="w-3 h-3 border-2 border-fuchsia-400/40 border-t-fuchsia-400 rounded-full animate-spin flex-shrink-0" />
+                      <span className="text-fuchsia-300 text-xs font-bold">
+                        {renderStatus === 'rendering' ? 'Rendering your Reel… ~60s' : 'Queued for render…'}
+                      </span>
+                    </div>
+                  ) : renderStatus === 'failed' ? (
+                    <div className="bg-red-500/20 border border-red-500/40 rounded-xl px-3 py-2">
+                      <span className="text-red-300 text-xs font-bold">Render failed — use the script below to edit manually</span>
+                    </div>
+                  ) : null}
+                </div>
+              )}
+              {!hasCreatomate && (
+                <div className="absolute top-3 left-3 right-3">
+                  <div className="bg-black/70 backdrop-blur rounded-xl px-3 py-2">
+                    <span className="text-white/50 text-xs">Add CREATOMATE_API_KEY to enable automatic video rendering</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </GlassCard>
+        )}
 
         {/* Meta chips */}
         <div className="grid grid-cols-2 gap-3">
@@ -584,7 +668,6 @@ function ReelTab({ content, assets }: { content: GeneratedContent; assets: Media
 
       {/* Right: shot list + caption */}
       <div className="space-y-4">
-        {/* Shot list */}
         <div className="flex items-center gap-2 mb-1">
           <List className="w-4 h-4 text-fuchsia-400" />
           <SectionLabel>Shot List · {reel.shotList.length} shots</SectionLabel>
@@ -597,11 +680,9 @@ function ReelTab({ content, assets }: { content: GeneratedContent; assets: Media
                 {shot.shot}
               </div>
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-fuchsia-400 text-xs font-bold font-mono">{shot.duration}</span>
-                </div>
-                <p className="text-white/80 text-sm leading-snug mb-1">{shot.description}</p>
-                <div className="flex items-center gap-1.5 mt-1.5">
+                <span className="text-fuchsia-400 text-xs font-bold font-mono">{shot.duration}</span>
+                <p className="text-white/80 text-sm leading-snug mt-1 mb-1">{shot.description}</p>
+                <div className="flex items-center gap-1.5">
                   <span className="text-white/25 text-xs">On-screen:</span>
                   <span className="text-fuchsia-300 text-xs font-semibold">&quot;{shot.onScreenText}&quot;</span>
                 </div>
@@ -610,7 +691,6 @@ function ReelTab({ content, assets }: { content: GeneratedContent; assets: Media
           ))}
         </div>
 
-        {/* Caption */}
         <GlassCard>
           <div className="flex items-center justify-between mb-2">
             <SectionLabel>Reel Caption</SectionLabel>
@@ -619,7 +699,6 @@ function ReelTab({ content, assets }: { content: GeneratedContent; assets: Media
           <p className="text-gray-300 text-sm leading-relaxed">{reel.caption}</p>
         </GlassCard>
 
-        {/* Hashtags */}
         <GlassCard>
           <SectionLabel>Hashtags</SectionLabel>
           <HashtagPills tags={reel.hashtags} />
