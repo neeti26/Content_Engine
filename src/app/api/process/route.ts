@@ -113,6 +113,8 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     console.error('[Pipeline error]', err);
     const { message, retryable } = friendlyError(err);
-    return NextResponse.json({ error: message, retryable }, { status: 500 });
+    // Always include raw error so we can debug from the browser network tab
+    const rawMsg = String(err instanceof Error ? err.message : err).slice(0, 500);
+    return NextResponse.json({ error: message, retryable, _debug: rawMsg }, { status: 500 });
   }
 }
