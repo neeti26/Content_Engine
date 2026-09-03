@@ -14,7 +14,8 @@ export interface MediaAsset {
   id: string;
   name: string;
   type: 'image' | 'video';
-  base64: string;
+  base64: string;          // full quality — display only, never sent to server
+  apiBase64?: string;      // compressed copy sent to API (≤80KB each)
   mimeType: string;
   size: number;
   score?: AssetScore;

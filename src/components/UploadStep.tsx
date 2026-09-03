@@ -13,7 +13,34 @@ const MAX = 20;
 const MAX_IMAGE_MB = 15;
 const MAX_VIDEO_MB = 100;
 
-// Compress image to fit within target size
+// Compress image for API transmission — small enough to stay under Vercel's 4.5MB limit.
+// Original full-quality base64 stays in client state for display only.
+function compressForAPI(
+  base64: string,
+  mimeType: string,
+  maxDimension = 800,
+  quality = 0.72
+): Promise<{ base64: string; mimeType: string }> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      let { width, height } = img;
+      if (width > maxDimension || height > maxDimension) {
+        if (width > height) { height = Math.round((height * maxDimension) / width); width = maxDimension; }
+        else { width = Math.round((width * maxDimension) / height); height = maxDimension; }
+      }
+      canvas.width = width; canvas.height = height;
+      canvas.getContext('2d')!.drawImage(img, 0, 0, width, height);
+      const outMime = 'image/jpeg';
+      const dataUrl = canvas.toDataURL(outMime, quality);
+      resolve({ base64: dataUrl.split(',')[1], mimeType: outMime });
+    };
+    img.onerror = reject;
+    img.src = `data:${mimeType};base64,${base64}`;
+  });
+}
+// Compress image to display quality (stored in client state for preview)
 function compressImage(file: File, maxDimension = 1920, quality = 0.85): Promise<{ base64: string; mimeType: string; size: number }> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -94,22 +121,23 @@ export default function UploadStep({ onNext, onBack }: Props) {
     const isVideo = file.type.startsWith('video/');
 
     if (isVideo) {
-      const [thumbnailResult, base64] = await Promise.all([
-        extractVideoThumbnail(file),
-        readVideoAsBase64(file),
-      ]);
+      const thumbnailResult = await extractVideoThumbnail(file);
+      // For videos: don't send full video to API — use thumbnail for scoring
       return {
         id: uuidv4(),
         name: file.name,
         type: 'video',
-        base64,
-        mimeType: file.type,
+        base64: thumbnailResult.thumbnailBase64, // display uses thumbnail too
+        apiBase64: thumbnailResult.thumbnailBase64,
+        mimeType: 'image/jpeg',
         size: file.size,
         thumbnailBase64: thumbnailResult.thumbnailBase64,
       };
     } else {
       const { base64, mimeType, size } = await compressImage(file);
-      return { id: uuidv4(), name: file.name, type: 'image', base64, mimeType, size };
+      // Produce a smaller copy for the API payload (~800px, q0.72 → ~30-80KB)
+      const api = await compressForAPI(base64, mimeType);
+      return { id: uuidv4(), name: file.name, type: 'image', base64, mimeType, size, apiBase64: api.base64 };
     }
   }, []);
 

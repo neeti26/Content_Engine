@@ -27,11 +27,25 @@ export default function Home() {
     setBrief(eventBrief);
     setErrorMsg(null);
 
+    // Send only small API-compressed copies to stay under Vercel's 4.5MB body limit.
+    // Full-quality base64 stays in client state for display in ResultsDashboard.
+    const apiAssets = assets.map(({ base64: _display, apiBase64, thumbnailBase64: _thumb, ...rest }) => ({
+      ...rest,
+      base64: apiBase64 ?? _display, // fallback to display if apiBase64 missing
+      mimeType: rest.mimeType,
+    }));
+
     const promise = fetch('/api/process', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ brief: eventBrief, assets }),
+      body: JSON.stringify({ brief: eventBrief, assets: apiAssets }),
     }).then(async (res) => {
+      // Guard: Vercel may return HTML/text errors (413, 500) before our handler runs
+      const contentType = res.headers.get('content-type') ?? '';
+      if (!contentType.includes('application/json')) {
+        const text = await res.text();
+        throw new Error(`Server error (${res.status}): ${text.slice(0, 120)}`);
+      }
       const data = await res.json() as { result?: GeneratedContent; error?: string };
       if (!res.ok || data.error) throw new Error(data.error ?? 'Processing failed');
       if (!data.result) throw new Error('No result returned from server');
@@ -53,6 +67,11 @@ export default function Home() {
 
     const promise = fetch('/api/demo', { method: 'POST' })
       .then(async (res) => {
+        const contentType = res.headers.get('content-type') ?? '';
+        if (!contentType.includes('application/json')) {
+          const text = await res.text();
+          throw new Error(`Server error (${res.status}): ${text.slice(0, 120)}`);
+        }
         const data = await res.json() as { result?: GeneratedContent; error?: string };
         if (!res.ok || data.error) throw new Error(data.error ?? 'Demo failed');
         if (!data.result) throw new Error('No demo result');
