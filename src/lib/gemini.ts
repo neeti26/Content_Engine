@@ -38,7 +38,8 @@ export function hasAnyGeminiKey(): boolean {
 }
 
 // ─── Models ───────────────────────────────────────────────────────────────────
-const MODELS = ["gemini-1.5-flash", "gemini-1.5-flash-8b"];
+// Use gemini-2.0-flash as primary — it's available on v1beta and free tier
+const MODELS = ["gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-1.5-flash-latest", "gemini-1.5-flash-8b-latest"];
 const sleep  = (ms: number) => new Promise<void>(r => setTimeout(r, ms));
 
 // ─── JSON Parser ──────────────────────────────────────────────────────────────
