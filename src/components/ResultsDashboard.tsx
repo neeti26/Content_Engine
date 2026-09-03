@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Linkedin, Instagram, RotateCcw, Copy, Check,
   Download, Star, ChevronDown, ChevronUp, Zap,
-  Twitter,
+  Twitter, Film, Music, Clock, List,
   Image as ImageIcon, Package, Share2, MessageCircle
 } from 'lucide-react';
 import { GeneratedContent, MediaAsset, EventBrief } from '@/types';
@@ -23,14 +23,16 @@ interface Props {
 
 type Tab = 'linkedin' | 'instagram' | 'story' | 'twitter' | 'whatsapp' | 'architecture';
 
-const tabs: { id: Tab; label: string; icon: React.ElementType; colorClass: string }[] = [
-  { id: 'linkedin',     label: 'LinkedIn',      icon: Linkedin,      colorClass: 'text-blue-400' },
-  { id: 'instagram',    label: 'Instagram Post', icon: Instagram,     colorClass: 'text-pink-400' },
-  { id: 'story',        label: 'IG Story',       icon: Instagram,     colorClass: 'text-orange-400' },
-  { id: 'twitter',      label: 'Twitter/X',      icon: Twitter,       colorClass: 'text-sky-400' },
-  { id: 'whatsapp',     label: 'WhatsApp',       icon: MessageCircle, colorClass: 'text-green-400' },
-  { id: 'architecture', label: 'Architecture',   icon: Package,       colorClass: 'text-gray-400' },
-];
+function buildTabs(instagramType: 'post' | 'reel'): { id: Tab; label: string; icon: React.ElementType; colorClass: string }[] {
+  return [
+    { id: 'linkedin',     label: 'LinkedIn',                                   icon: Linkedin,      colorClass: 'text-blue-400'  },
+    { id: 'instagram',    label: instagramType === 'reel' ? 'IG Reel' : 'Instagram Post', icon: instagramType === 'reel' ? Film : Instagram, colorClass: instagramType === 'reel' ? 'text-fuchsia-400' : 'text-pink-400' },
+    { id: 'story',        label: 'IG Story',                                   icon: Instagram,     colorClass: 'text-orange-400' },
+    { id: 'twitter',      label: 'Twitter/X',                                  icon: Twitter,       colorClass: 'text-sky-400'   },
+    { id: 'whatsapp',     label: 'WhatsApp',                                   icon: MessageCircle, colorClass: 'text-green-400'  },
+    { id: 'architecture', label: 'Architecture',                               icon: Package,       colorClass: 'text-gray-400'  },
+  ];
+}
 
 // ─── Reusable helpers ────────────────────────────────────────────────────────
 
@@ -487,17 +489,162 @@ function TwitterTab({ content, assets }: { content: GeneratedContent; assets: Me
   );
 }
 
+// ─── Tab: Instagram Reel ─────────────────────────────────────────────────────
+
+function ReelTab({ content, assets }: { content: GeneratedContent; assets: MediaAsset[] }) {
+  const reel = content.instagramReel;
+  const asset = assets.find((a) => a.id === reel?.selectedImageId) ?? assets[0];
+
+  if (!reel) return (
+    <div className="text-center py-20 text-white/30">
+      <p>No Reel content found. Make sure you selected &quot;Reel Script&quot; in the brief.</p>
+    </div>
+  );
+
+  const fullScript = [
+    `HOOK: ${reel.hook}`,
+    `DURATION: ${reel.duration}`,
+    '',
+    'SHOT LIST',
+    ...reel.shotList.map(s => `[${s.shot}] ${s.duration} — ${s.description}\n    On-screen: "${s.onScreenText}"`),
+    '',
+    'VOICEOVER SCRIPT',
+    reel.voiceoverScript,
+    '',
+    `MUSIC MOOD: ${reel.musicMood}`,
+    '',
+    'CAPTION',
+    reel.caption,
+    '',
+    reel.hashtags.map(h => h.startsWith('#') ? h : `#${h}`).join(' '),
+  ].join('\n');
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Left: preview + meta */}
+      <div className="space-y-4">
+        {/* Thumbnail / video preview */}
+        <GlassCard className="p-0 overflow-hidden">
+          <div className="aspect-[9/16] max-h-[480px] w-full bg-gray-900 overflow-hidden rounded-2xl relative">
+            {asset ? (
+              asset.type === 'video' ? (
+                // eslint-disable-next-line jsx-a11y/media-has-caption
+                <video
+                  src={`data:${asset.mimeType};base64,${asset.base64}`}
+                  className="w-full h-full object-cover"
+                  controls
+                  playsInline
+                />
+              ) : (
+                <AssetImg asset={asset} />
+              )
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-gray-700">
+                <Film className="w-12 h-12" />
+              </div>
+            )}
+            {/* Hook overlay */}
+            <div className="absolute bottom-0 left-0 right-0 p-4"
+              style={{ background: 'linear-gradient(transparent, rgba(0,0,0,0.85))' }}>
+              <p className="text-white font-black text-lg uppercase leading-tight tracking-wide">{reel.hook}</p>
+            </div>
+          </div>
+        </GlassCard>
+
+        {/* Meta chips */}
+        <div className="grid grid-cols-2 gap-3">
+          <GlassCard className="flex items-center gap-3">
+            <Clock className="w-4 h-4 text-fuchsia-400 flex-shrink-0" />
+            <div>
+              <p className="text-white/40 text-xs uppercase tracking-wider">Duration</p>
+              <p className="text-white font-bold text-sm">{reel.duration}</p>
+            </div>
+          </GlassCard>
+          <GlassCard className="flex items-center gap-3">
+            <Music className="w-4 h-4 text-fuchsia-400 flex-shrink-0" />
+            <div>
+              <p className="text-white/40 text-xs uppercase tracking-wider">Music Mood</p>
+              <p className="text-white font-bold text-sm leading-tight">{reel.musicMood}</p>
+            </div>
+          </GlassCard>
+        </div>
+
+        {/* Voiceover */}
+        <GlassCard>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Film className="w-4 h-4 text-fuchsia-400" />
+              <SectionLabel>Voiceover Script</SectionLabel>
+            </div>
+            <CopyButton text={reel.voiceoverScript} />
+          </div>
+          <p className="text-gray-300 text-sm leading-relaxed whitespace-pre-line">{reel.voiceoverScript}</p>
+        </GlassCard>
+      </div>
+
+      {/* Right: shot list + caption */}
+      <div className="space-y-4">
+        {/* Shot list */}
+        <div className="flex items-center gap-2 mb-1">
+          <List className="w-4 h-4 text-fuchsia-400" />
+          <SectionLabel>Shot List · {reel.shotList.length} shots</SectionLabel>
+        </div>
+        <div className="space-y-2">
+          {reel.shotList.map((shot) => (
+            <GlassCard key={shot.shot} className="flex gap-4 items-start">
+              <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 font-black text-sm"
+                style={{ background: 'rgba(232,121,249,0.15)', color: '#e879f9' }}>
+                {shot.shot}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-fuchsia-400 text-xs font-bold font-mono">{shot.duration}</span>
+                </div>
+                <p className="text-white/80 text-sm leading-snug mb-1">{shot.description}</p>
+                <div className="flex items-center gap-1.5 mt-1.5">
+                  <span className="text-white/25 text-xs">On-screen:</span>
+                  <span className="text-fuchsia-300 text-xs font-semibold">&quot;{shot.onScreenText}&quot;</span>
+                </div>
+              </div>
+            </GlassCard>
+          ))}
+        </div>
+
+        {/* Caption */}
+        <GlassCard>
+          <div className="flex items-center justify-between mb-2">
+            <SectionLabel>Reel Caption</SectionLabel>
+            <CopyButton text={reel.caption} />
+          </div>
+          <p className="text-gray-300 text-sm leading-relaxed">{reel.caption}</p>
+        </GlassCard>
+
+        {/* Hashtags */}
+        <GlassCard>
+          <SectionLabel>Hashtags</SectionLabel>
+          <HashtagPills tags={reel.hashtags} />
+        </GlassCard>
+
+        <div className="flex justify-end">
+          <CopyButton text={fullScript} label="Copy Full Reel Script" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Component ──────────────────────────────────────────────────────────
 
 export default function ResultsDashboard({ content, assets, brief, onReset }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>('linkedin');
   const [showPublish, setShowPublish] = useState(false);
+  const tabs = buildTabs(brief.instagramType ?? 'post');
 
   const buildExportText = useCallback(() => {
     const li = content.linkedin;
-    const ig = content.instagramPost;
     const story = content.instagramStory;
     const tw = content.twitter;
+    const isReel = brief.instagramType === 'reel';
 
     const lines: string[] = [
       `CONTENT ENGINE`,
@@ -517,11 +664,28 @@ export default function ResultsDashboard({ content, assets, brief, onReset }: Pr
       '',
       `${'='.repeat(60)}`,
       '',
-      `INSTAGRAM POST`,
+      isReel ? `INSTAGRAM REEL SCRIPT` : `INSTAGRAM POST`,
       `${'─'.repeat(40)}`,
-      ig.caption,
-      '',
-      ig.hashtags.map((h) => (h.startsWith('#') ? h : `#${h}`)).join(' '),
+      ...(isReel && content.instagramReel ? [
+        `HOOK: ${content.instagramReel.hook}`,
+        `DURATION: ${content.instagramReel.duration}`,
+        `MUSIC: ${content.instagramReel.musicMood}`,
+        '',
+        'SHOT LIST:',
+        ...content.instagramReel.shotList.map(s => `  [${s.shot}] ${s.duration} — ${s.description} | On-screen: "${s.onScreenText}"`),
+        '',
+        'VOICEOVER:',
+        content.instagramReel.voiceoverScript,
+        '',
+        'CAPTION:',
+        content.instagramReel.caption,
+        '',
+        content.instagramReel.hashtags.map(h => h.startsWith('#') ? h : `#${h}`).join(' '),
+      ] : [
+        content.instagramPost.caption,
+        '',
+        content.instagramPost.hashtags.map((h) => (h.startsWith('#') ? h : `#${h}`)).join(' '),
+      ]),
       '',
       `${'='.repeat(60)}`,
       '',
@@ -648,7 +812,9 @@ export default function ResultsDashboard({ content, assets, brief, onReset }: Pr
               <LinkedInTab content={content} assets={assets} />
             )}
             {activeTab === 'instagram' && (
-              <InstagramTab content={content} assets={assets} />
+              brief.instagramType === 'reel'
+                ? <ReelTab content={content} assets={assets} />
+                : <InstagramTab content={content} assets={assets} />
             )}
             {activeTab === 'story' && (
               <StoryTab content={content} assets={assets} />

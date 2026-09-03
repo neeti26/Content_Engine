@@ -1,6 +1,7 @@
 ﻿import {
   EventBrief, MediaAsset, LinkedInContent, InstagramPostContent,
-  InstagramStoryContent, TwitterContent, CaseStudyContent, WhatsAppContent,
+  InstagramReelContent, InstagramStoryContent, TwitterContent,
+  CaseStudyContent, WhatsAppContent,
 } from '@/types';
 import { generateJSON } from './gemini';
 
@@ -141,6 +142,41 @@ Return this JSON:
   "selectedImageId": "${asset.id}"
 }`,
     400
+  );
+  return { ...result, selectedImageId: asset.id };
+}
+
+// ─── Instagram Reel ──────────────────────────────────────────────────────────
+
+export async function generateInstagramReelContent(brief: EventBrief, asset: AssetWithDesc): Promise<InstagramReelContent> {
+  const result = await generateJSON<InstagramReelContent>(
+    `You are a professional Instagram Reel director and scriptwriter. Create detailed, production-ready Reel scripts. Tone: ${brief.tone}.`,
+    `Create a complete Instagram Reel script for this event:
+Event: ${brief.eventName} by ${brief.brandName}
+Type: ${brief.eventType}, Location: ${brief.location}
+Highlights: ${brief.keyHighlights}
+Target Audience: ${brief.targetAudience}
+Visual context: ${asset.description ?? 'dynamic event moments'}
+
+Return this JSON:
+{
+  "hook": "first 3 seconds on-screen text — must stop the scroll, max 8 words, ALL CAPS",
+  "duration": "30s",
+  "shotList": [
+    {"shot": 1, "duration": "0-3s",  "description": "what the camera shows", "onScreenText": "text overlay"},
+    {"shot": 2, "duration": "3-8s",  "description": "what the camera shows", "onScreenText": "text overlay"},
+    {"shot": 3, "duration": "8-14s", "description": "what the camera shows", "onScreenText": "text overlay"},
+    {"shot": 4, "duration": "14-20s","description": "what the camera shows", "onScreenText": "text overlay"},
+    {"shot": 5, "duration": "20-26s","description": "what the camera shows", "onScreenText": "text overlay"},
+    {"shot": 6, "duration": "26-30s","description": "closing shot",         "onScreenText": "CTA text"}
+  ],
+  "voiceoverScript": "complete 30-second voiceover script matching the shot list, punchy and energetic",
+  "musicMood": "e.g. Upbeat corporate pop, High energy EDM, Cinematic orchestral",
+  "caption": "Reel caption with hook emoji, 2 short sentences, ends with question, max 100 words",
+  "hashtags": ["#Reels","#Events","#Brand","#Marketing","#EventMarketing","#BehindTheScenes","#BusinessEvents","#Networking","#Conference","#Innovation","#Leadership","#Growth","#Success","#Community","#Viral"],
+  "selectedImageId": "${asset.id}"
+}`,
+    1800
   );
   return { ...result, selectedImageId: asset.id };
 }

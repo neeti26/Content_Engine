@@ -7,6 +7,7 @@ export interface EventBrief {
   keyHighlights: string;
   targetAudience: string;
   tone: 'professional' | 'energetic' | 'inspirational' | 'casual';
+  instagramType: 'post' | 'reel';
 }
 
 export interface MediaAsset {
@@ -17,6 +18,8 @@ export interface MediaAsset {
   mimeType: string;
   size: number;
   score?: AssetScore;
+  /** For video assets: a base64 JPEG thumbnail extracted client-side */
+  thumbnailBase64?: string;
 }
 
 export interface AssetScore {
@@ -31,6 +34,7 @@ export interface AssetScore {
 export interface GeneratedContent {
   linkedin: LinkedInContent;
   instagramPost: InstagramPostContent;
+  instagramReel?: InstagramReelContent;
   instagramStory: InstagramStoryContent;
   twitter: TwitterContent;
   whatsapp: WhatsAppContent;
@@ -60,6 +64,24 @@ export interface InstagramPostContent {
   emojis: string[];
   selectedImageId: string;
   characterCount: number;
+}
+
+export interface InstagramReelContent {
+  hook: string;
+  duration: string;
+  shotList: ShotListItem[];
+  voiceoverScript: string;
+  musicMood: string;
+  caption: string;
+  hashtags: string[];
+  selectedImageId: string;
+}
+
+export interface ShotListItem {
+  shot: number;
+  duration: string;
+  description: string;
+  onScreenText: string;
 }
 
 export interface InstagramStoryContent {

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, ArrowRight, Zap, Sparkles, AlertCircle, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Zap, Sparkles, AlertCircle, X, Film, Image } from 'lucide-react';
 import { EventBrief } from '@/types';
 
 interface Props {
@@ -29,7 +29,8 @@ const eventTypes = [
 export default function BriefStep({ assetCount, onSubmit, onBack, errorMsg, onClearError }: Props) {
   const [form, setForm] = useState<EventBrief>({
     eventName: '', brandName: '', eventType: 'Brand Activation',
-    location: '', date: '', keyHighlights: '', targetAudience: '', tone: 'professional',
+    location: '', date: '', keyHighlights: '', targetAudience: '',
+    tone: 'professional', instagramType: 'post',
   });
   const [loading, setLoading] = useState(false);
 
@@ -55,7 +56,7 @@ export default function BriefStep({ assetCount, onSubmit, onBack, errorMsg, onCl
         </button>
         <div>
           <h2 className="font-bold text-white text-sm">Event Brief</h2>
-          <p className="text-white/30 text-xs">Step 2 of 2 · {assetCount} photo{assetCount !== 1 ? 's' : ''} ready</p>
+          <p className="text-white/30 text-xs">Step 2 of 2 · {assetCount} file{assetCount !== 1 ? 's' : ''} ready</p>
         </div>
         <div className="ml-auto flex items-center gap-1.5">
           <div className="w-8 h-1.5 rounded-full bg-white/10" />
@@ -147,6 +148,34 @@ export default function BriefStep({ assetCount, onSubmit, onBack, errorMsg, onCl
               <input value={form.targetAudience} onChange={e => set('targetAudience', e.target.value)}
                 placeholder="e.g. Marketing professionals, startup founders, enterprise decision-makers"
                 className="input-field w-full rounded-xl px-4 py-3 text-sm" />
+            </div>
+
+            {/* Instagram output type */}
+            <div className="space-y-3">
+              <label className="text-xs font-semibold text-white/40 uppercase tracking-wider">Instagram Output</label>
+              <div className="grid grid-cols-2 gap-3">
+                {([
+                  { value: 'post', icon: Image,  label: 'Static Post',   desc: 'Caption + 20 hashtags · best for polished brand moments' },
+                  { value: 'reel', icon: Film,   label: 'Reel Script',   desc: 'Shot list + voiceover · best for behind-the-scenes & energy' },
+                ] as const).map(opt => (
+                  <button
+                    key={opt.value}
+                    onClick={() => set('instagramType', opt.value)}
+                    className={`p-4 rounded-2xl border text-left transition-all card-hover flex gap-3 items-start
+                      ${form.instagramType === opt.value ? 'border-pink-500/60' : 'border-white/8 hover:border-white/20'}`}
+                    style={{ background: form.instagramType === opt.value ? 'rgba(236,72,153,0.10)' : 'rgba(255,255,255,0.03)' }}
+                  >
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5"
+                      style={{ background: form.instagramType === opt.value ? 'rgba(236,72,153,0.2)' : 'rgba(255,255,255,0.06)' }}>
+                      <opt.icon className={`w-4 h-4 ${form.instagramType === opt.value ? 'text-pink-400' : 'text-white/40'}`} />
+                    </div>
+                    <div>
+                      <div className={`font-bold text-sm mb-1 ${form.instagramType === opt.value ? 'text-white' : 'text-white/60'}`}>{opt.label}</div>
+                      <div className="text-xs text-white/30 leading-relaxed">{opt.desc}</div>
+                    </div>
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Tone */}
