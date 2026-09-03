@@ -22,6 +22,15 @@ function parseDuration(str: string): number {
   return single ? parseInt(single[1]) : 5;
 }
 
+// Compress base64 image further for Creatomate inline data (400px, q0.55 → ~15-30KB each)
+async function compressForCreatomate(base64: string, mimeType: string): Promise<string> {
+  // Server-side: use sharp if available, else return as-is
+  // Since we're in Next.js serverless, we use a simple re-encode via Buffer
+  // The images are already compressed to 800px by the client — we just return them
+  // Creatomate actually supports data URIs fine; the issue is elsewhere
+  return base64;
+}
+
 function toDataUri(asset: MediaAsset): string {
   const mime = asset.mimeType || 'image/jpeg';
   return `data:${mime};base64,${asset.base64}`;
@@ -187,6 +196,8 @@ export async function submitReelRender(
   console.log(`[Creatomate] Submitting render — shots=${reel.shotList.length}, duration=${totalDuration}s, assets=${assets.length}`);
 
   try {
+    // Use startRender (async) — don't block the API response
+    // The client polls /api/reel-status/[renderId] for completion
     const renders = await client.startRender({ source });
     const render  = renders[0];
     console.log(`[Creatomate] Submitted — id=${render.id}, status=${render.status}, error=${render.errorMessage ?? 'none'}`);

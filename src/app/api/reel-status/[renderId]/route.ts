@@ -19,9 +19,9 @@ export async function GET(
 
   try {
     const result = await fetchReelStatus(renderId);
-    return NextResponse.json(result);
+    return NextResponse.json(result); // includes errorMessage field
   } catch (err) {
     console.error('[reel-status] Error:', err);
-    return NextResponse.json({ error: 'Failed to fetch render status', status: 'failed' }, { status: 500 });
+    return NextResponse.json({ error: String(err).slice(0, 300), status: 'failed' }, { status: 500 });
   }
 }

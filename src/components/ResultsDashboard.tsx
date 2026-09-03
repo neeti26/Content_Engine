@@ -500,6 +500,7 @@ function ReelTab({ content, assets }: { content: GeneratedContent; assets: Media
     reel?.renderStatus ?? (reel?.renderId ? 'pending' : null)
   );
   const [videoUrl, setVideoUrl] = useState<string | null>(reel?.videoUrl ?? null);
+  const [renderError, setRenderError] = useState<string | null>(null);
 
   // Poll render status every 4 seconds until done/failed
   useEffect(() => {
@@ -510,13 +511,17 @@ function ReelTab({ content, assets }: { content: GeneratedContent; assets: Media
       try {
         const res = await fetch(`/api/reel-status/${reel.renderId}`);
         if (!res.ok || cancelled) return;
-        const data = await res.json() as { status: string; videoUrl?: string };
+        const data = await res.json() as { status: string; videoUrl?: string; errorMessage?: string };
         if (cancelled) return;
         if (data.status === 'done' && data.videoUrl) {
           setVideoUrl(data.videoUrl);
           setRenderStatus('done');
         } else if (data.status === 'failed') {
           setRenderStatus('failed');
+          if (data.errorMessage) {
+            setRenderError(data.errorMessage);
+            console.error('[Reel] Creatomate error:', data.errorMessage);
+          }
         } else {
           setRenderStatus(data.status === 'rendering' ? 'rendering' : 'pending');
         }
@@ -619,7 +624,8 @@ function ReelTab({ content, assets }: { content: GeneratedContent; assets: Media
                     </div>
                   ) : renderStatus === 'failed' ? (
                     <div className="bg-red-500/20 border border-red-500/40 rounded-xl px-3 py-2">
-                      <span className="text-red-300 text-xs font-bold">Render failed — use the script below to edit manually</span>
+                      <span className="text-red-300 text-xs font-bold block">Render failed</span>
+                      {renderError && <span className="text-red-200/60 text-xs block mt-0.5">{renderError.slice(0, 120)}</span>}
                     </div>
                   ) : null}
                 </div>
