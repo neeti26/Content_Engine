@@ -5,7 +5,6 @@ import {
   generateLinkedInContent,
   generateInstagramPostContent,
   generateInstagramReelContent,
-  generateInstagramStoryContent,
   generateTwitterContent,
   generateCaseStudyContent,
   generateWhatsAppContent,
@@ -13,12 +12,11 @@ import {
 
 const delay = (ms: number) => new Promise<void>(r => setTimeout(r, ms));
 
-// Wrap a generator so a single failure returns a fallback instead of crashing the whole pipeline
 async function safe<T>(name: string, fn: () => Promise<T>, fallback: T): Promise<T> {
   try {
     return await fn();
   } catch (err) {
-    console.error(`[Pipeline] Generator "${name}" failed, using fallback:`, String(err).slice(0, 200));
+    console.error(`[Pipeline] "${name}" failed, using fallback:`, String(err).slice(0, 200));
     return fallback;
   }
 }
@@ -31,31 +29,26 @@ export async function runPipeline(
 
   console.log(`[Pipeline] Starting — ${assets.length} assets, instagramType=${brief.instagramType}`);
 
-  // Step 1: Score all assets in batches (parallel within batch, rate-limit safe)
   const scoredAssets = await scoreAllAssets(assets, ctx);
   console.log(`[Pipeline] Scored ${scoredAssets.length} assets`);
 
-  // Step 2: Select best asset per platform (1 Gemini call)
   const selection = await selectBestAssets(scoredAssets, ctx);
-  console.log(`[Pipeline] Asset selection complete`);
+  console.log(`[Pipeline] Selection complete`);
 
   const find = (id: string) => scoredAssets.find((a) => a.id === id) ?? scoredAssets[0];
 
-  const twitterId  = selection.twitter  ?? selection.instagramPost;
-  const whatsappId = selection.whatsapp ?? selection.instagramPost;
+  const twitterId   = selection.twitter  ?? selection.instagramPost;
+  const whatsappId  = selection.whatsapp ?? selection.instagramPost;
   const reelAssetId = selection.instagramReel ?? selection.instagramPost;
   const reelAsset   = find(reelAssetId);
   const isReel      = brief.instagramType === 'reel';
+  const fallbackId  = scoredAssets[0]?.id ?? '';
 
-  // Fallbacks used if a generator fails — always return something usable
-  const fallbackId = scoredAssets[0]?.id ?? '';
-
-  // Step 3: All generators run in parallel with 150ms stagger
   type InstagramResult =
     | Awaited<ReturnType<typeof generateInstagramPostContent>>
     | Awaited<ReturnType<typeof generateInstagramReelContent>>;
 
-  const [linkedin, instagramResult, instagramStory, twitter, whatsapp, caseStudy] =
+  const [linkedin, instagramResult, twitter, whatsapp, caseStudy] =
     await Promise.all([
       safe('linkedin', () => generateLinkedInContent(brief, find(selection.linkedin)), {
         headline: `${brief.eventName} — A Defining Moment for ${brief.brandName}`,
@@ -72,16 +65,17 @@ export async function runPipeline(
               hook: `${brief.eventName.toUpperCase()} — YOU MISSED THIS`,
               duration: '30s',
               shotList: [
-                { shot: 1, duration: '0-5s',  description: 'Opening wide shot of event', onScreenText: brief.eventName },
-                { shot: 2, duration: '5-10s', description: 'Crowd energy shots',          onScreenText: 'The energy was unreal' },
-                { shot: 3, duration: '10-20s',description: 'Key moments highlights',       onScreenText: brief.keyHighlights.split(',')[0] ?? '' },
-                { shot: 4, duration: '20-25s',description: 'Brand showcase moments',       onScreenText: brief.brandName },
-                { shot: 5, duration: '25-30s',description: 'Closing shot with logo',       onScreenText: 'Follow for more' },
+                { shot: 1, duration: '0-3s',  description: 'Opening hero shot', onScreenText: brief.eventName },
+                { shot: 2, duration: '3-8s',  description: 'Crowd energy',      onScreenText: 'The energy was unreal' },
+                { shot: 3, duration: '8-14s', description: 'Key moment',        onScreenText: brief.keyHighlights.split(',')[0] ?? '' },
+                { shot: 4, duration: '14-20s',description: 'Candid moments',    onScreenText: brief.brandName },
+                { shot: 5, duration: '20-26s',description: 'Brand showcase',    onScreenText: 'Follow for more' },
+                { shot: 6, duration: '26-30s',description: 'Closing shot',      onScreenText: 'Follow us' },
               ],
-              voiceoverScript: `${brief.eventName} by ${brief.brandName}. ${brief.keyHighlights}. Don't miss our next event.`,
+              voiceoverScript: `${brief.eventName} by ${brief.brandName}. ${brief.keyHighlights}. Don't miss the next one.`,
               musicMood: 'Upbeat corporate pop',
-              caption: `${brief.eventName} was incredible! ${brief.keyHighlights.split(',')[0]}. Were you there?`,
-              hashtags: ['#Reels', '#Events', '#Marketing', '#Brand'],
+              caption: `${brief.eventName} was incredible! Were you there?`,
+              hashtags: ['#Reels', '#Events', '#Marketing'],
               selectedImageId: reelAsset.id,
             })
           : safe('instagram-post', () => generateInstagramPostContent(brief, find(selection.instagramPost)), {
@@ -93,31 +87,23 @@ export async function runPipeline(
             })
       ),
 
-      delay(300).then(() => safe('story', () => generateInstagramStoryContent(brief, find(selection.instagramStory)), {
-        headline: brief.eventName.toUpperCase().slice(0, 20),
-        subtext: brief.brandName,
-        ctaText: 'Swipe Up',
-        selectedImageId: fallbackId,
-        overlayStyle: 'gradient' as const,
-      })),
-
-      delay(450).then(() => safe('twitter', () => generateTwitterContent(brief, find(twitterId)), {
+      delay(300).then(() => safe('twitter', () => generateTwitterContent(brief, find(twitterId)), {
         threadHook: `${brief.eventName} just happened and here's what you missed 🧵`,
         tweets: [
           `${brief.eventName} by ${brief.brandName} — here's a thread 🧵`,
           brief.keyHighlights,
-          `Thanks to everyone who made it happen. More soon.`,
+          `Thanks to everyone who made it happen.`,
         ],
         selectedImageId: fallbackId,
       })),
 
-      delay(600).then(() => safe('whatsapp', () => generateWhatsAppContent(brief, find(whatsappId)), {
+      delay(450).then(() => safe('whatsapp', () => generateWhatsAppContent(brief, find(whatsappId)), {
         statusText: `${brief.eventName} — done! 🔥`,
         caption: `Just wrapped ${brief.eventName} by ${brief.brandName}. ${brief.keyHighlights}`,
         selectedImageId: fallbackId,
       })),
 
-      delay(750).then(() => safe('case-study', () => generateCaseStudyContent(brief, selection.caseStudy), {
+      delay(600).then(() => safe('case-study', () => generateCaseStudyContent(brief, selection.caseStudy), {
         title: `${brief.eventName}: Event Recap`,
         executiveSummary: `${brief.brandName} hosted ${brief.eventName}. ${brief.keyHighlights}`,
         eventOverview: `${brief.eventType} held in ${brief.location} on ${brief.date}.`,
@@ -131,27 +117,44 @@ export async function runPipeline(
 
   console.log(`[Pipeline] All generators complete`);
 
-  // If reel mode: submit Creatomate render asynchronously.
-  // This fires off the render job and returns a renderId immediately.
-  // The client polls /api/reel-status/[renderId] for the final videoUrl.
+  // Submit Creatomate render for reel
   let finalReelContent = isReel
     ? (instagramResult as unknown as Awaited<ReturnType<typeof generateInstagramReelContent>>)
     : undefined;
 
-  if (isReel && finalReelContent && process.env.CREATOMATE_API_KEY) {
-    try {
-      console.log('[Pipeline] Submitting Creatomate Reel render...');
-      const renderResult = await submitReelRender(finalReelContent, assets, brief.brandName);
+  if (isReel && finalReelContent) {
+    const hasCreatomateKey = !!process.env.CREATOMATE_API_KEY;
+    console.log(`[Pipeline] Reel mode — CREATOMATE_API_KEY present: ${hasCreatomateKey}`);
+
+    if (hasCreatomateKey) {
+      try {
+        console.log('[Pipeline] Submitting Creatomate render...');
+        const renderResult = await submitReelRender(finalReelContent, assets, brief.brandName);
+        finalReelContent = {
+          ...finalReelContent,
+          renderId:     renderResult.renderId || 'attempted',
+          renderStatus: renderResult.status,
+          videoUrl:     renderResult.videoUrl,
+          renderError:  renderResult.errorMessage,
+        };
+        console.log(`[Pipeline] Creatomate: id=${renderResult.renderId}, status=${renderResult.status}, error=${renderResult.errorMessage ?? 'none'}`);
+      } catch (err) {
+        const errMsg = String(err).slice(0, 300);
+        console.error('[Pipeline] Creatomate render submission failed:', errMsg);
+        finalReelContent = {
+          ...finalReelContent,
+          renderId:     'failed',
+          renderStatus: 'failed',
+          renderError:  errMsg,
+        };
+      }
+    } else {
       finalReelContent = {
         ...finalReelContent,
-        renderId:     renderResult.renderId,
-        renderStatus: renderResult.status,
-        videoUrl:     renderResult.videoUrl,
+        renderId:     '',
+        renderStatus: 'failed',
+        renderError:  'CREATOMATE_API_KEY not configured in environment variables',
       };
-      console.log(`[Pipeline] Creatomate render submitted: id=${renderResult.renderId}`);
-    } catch (err) {
-      // Non-fatal — user still gets the script even if render submission fails
-      console.error('[Pipeline] Creatomate render submission failed:', String(err).slice(0, 200));
     }
   }
 
@@ -161,17 +164,15 @@ export async function runPipeline(
       ? { caption: '', hashtags: [], emojis: [], selectedImageId: reelAsset.id, characterCount: 0 }
       : (instagramResult as Awaited<ReturnType<typeof generateInstagramPostContent>>),
     instagramReel: isReel ? finalReelContent : undefined,
-    instagramStory,
     twitter,
     whatsapp,
     caseStudy,
     selectedAssets: {
-      linkedin:       selection.linkedin,
-      instagramPost:  selection.instagramPost,
-      instagramStory: selection.instagramStory,
-      twitter:        twitterId,
-      whatsapp:       whatsappId,
-      caseStudy:      selection.caseStudy,
+      linkedin:           selection.linkedin,
+      instagramPost:      selection.instagramPost,
+      twitter:            twitterId,
+      whatsapp:           whatsappId,
+      caseStudy:          selection.caseStudy,
       selectionRationale: selection.rationale,
     },
     processingLog: [],

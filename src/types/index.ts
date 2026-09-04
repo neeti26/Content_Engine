@@ -14,12 +14,11 @@ export interface MediaAsset {
   id: string;
   name: string;
   type: 'image' | 'video';
-  base64: string;          // full quality — display only, never sent to server
-  apiBase64?: string;      // compressed copy sent to API (≤80KB each)
+  base64: string;
+  apiBase64?: string;
   mimeType: string;
   size: number;
   score?: AssetScore;
-  /** For video assets: a base64 JPEG thumbnail extracted client-side */
   thumbnailBase64?: string;
 }
 
@@ -36,7 +35,6 @@ export interface GeneratedContent {
   linkedin: LinkedInContent;
   instagramPost: InstagramPostContent;
   instagramReel?: InstagramReelContent;
-  instagramStory: InstagramStoryContent;
   twitter: TwitterContent;
   whatsapp: WhatsAppContent;
   caseStudy: CaseStudyContent;
@@ -76,10 +74,10 @@ export interface InstagramReelContent {
   caption: string;
   hashtags: string[];
   selectedImageId: string;
-  // Creatomate render fields — populated after video render is submitted
   videoUrl?: string;
   renderId?: string;
   renderStatus?: 'pending' | 'rendering' | 'done' | 'failed';
+  renderError?: string;
 }
 
 export interface ShotListItem {
@@ -87,15 +85,6 @@ export interface ShotListItem {
   duration: string;
   description: string;
   onScreenText: string;
-}
-
-export interface InstagramStoryContent {
-  headline: string;
-  subtext: string;
-  ctaText: string;
-  selectedImageId: string;
-  overlayStyle: 'dark' | 'light' | 'gradient';
-  storyImageBase64?: string;
 }
 
 export interface TwitterContent {
@@ -124,7 +113,6 @@ export interface ImpactMetric {
 export interface SelectedAssets {
   linkedin: string;
   instagramPost: string;
-  instagramStory: string;
   twitter: string;
   whatsapp: string;
   caseStudy: string[];

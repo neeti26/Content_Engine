@@ -4,12 +4,11 @@ import { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Linkedin, Instagram, RotateCcw, Copy, Check,
-  Download, Star, ChevronDown, ChevronUp, Zap,
+  Download, Star, ChevronDown, ChevronUp,
   Twitter, Film, Music, Clock, List,
   Image as ImageIcon, Package, Share2, MessageCircle
 } from 'lucide-react';
 import { GeneratedContent, MediaAsset, EventBrief } from '@/types';
-import { getStoryOverlayConfig, generateStoryImageCanvas } from '@/lib/storyImageGenerator';
 import ArchitectureView from '@/components/ArchitectureView';
 import PublishPanel from '@/components/PublishPanel';
 import Logo from '@/components/Logo';
@@ -21,16 +20,15 @@ interface Props {
   onReset: () => void;
 }
 
-type Tab = 'linkedin' | 'instagram' | 'story' | 'twitter' | 'whatsapp' | 'architecture';
+type Tab = 'linkedin' | 'instagram' | 'twitter' | 'whatsapp' | 'architecture';
 
 function buildTabs(instagramType: 'post' | 'reel'): { id: Tab; label: string; icon: React.ElementType; colorClass: string }[] {
   return [
-    { id: 'linkedin',     label: 'LinkedIn',                                   icon: Linkedin,      colorClass: 'text-blue-400'  },
-    { id: 'instagram',    label: instagramType === 'reel' ? 'IG Reel' : 'Instagram Post', icon: instagramType === 'reel' ? Film : Instagram, colorClass: instagramType === 'reel' ? 'text-fuchsia-400' : 'text-pink-400' },
-    { id: 'story',        label: 'IG Story',                                   icon: Instagram,     colorClass: 'text-orange-400' },
-    { id: 'twitter',      label: 'Twitter/X',                                  icon: Twitter,       colorClass: 'text-sky-400'   },
-    { id: 'whatsapp',     label: 'WhatsApp',                                   icon: MessageCircle, colorClass: 'text-green-400'  },
-    { id: 'architecture', label: 'Architecture',                               icon: Package,       colorClass: 'text-gray-400'  },
+    { id: 'linkedin',     label: 'LinkedIn',                                                          icon: Linkedin,      colorClass: 'text-blue-400'    },
+    { id: 'instagram',    label: instagramType === 'reel' ? 'IG Reel' : 'Instagram Post',             icon: instagramType === 'reel' ? Film : Instagram, colorClass: instagramType === 'reel' ? 'text-fuchsia-400' : 'text-pink-400' },
+    { id: 'twitter',      label: 'Twitter/X',                                                         icon: Twitter,       colorClass: 'text-sky-400'     },
+    { id: 'whatsapp',     label: 'WhatsApp',                                                          icon: MessageCircle, colorClass: 'text-green-400'   },
+    { id: 'architecture', label: 'Architecture',                                                      icon: Package,       colorClass: 'text-gray-400'    },
   ];
 }
 
@@ -285,152 +283,6 @@ function InstagramTab({ content, assets }: { content: GeneratedContent; assets: 
   );
 }
 
-// ─── Tab: Instagram Story ────────────────────────────────────────────────────
-
-function StoryTab({ content, assets }: { content: GeneratedContent; assets: MediaAsset[] }) {
-  const story = content.instagramStory;
-  const asset = assets.find((a) => a.id === story.selectedImageId) ?? assets[0];
-  const overlayConfig = getStoryOverlayConfig(story);
-  const [rendering, setRendering] = useState(false);
-  const [renderedUrl, setRenderedUrl] = useState<string | null>(
-    story.storyImageBase64 ? `data:image/jpeg;base64,${story.storyImageBase64}` : null
-  );
-
-  const handleRender = async () => {
-    if (!asset) return;
-    setRendering(true);
-    try {
-      const url = await generateStoryImageCanvas(asset.base64, story);
-      setRenderedUrl(url);
-    } finally {
-      setRendering(false);
-    }
-  };
-
-  const handleDownload = () => {
-    if (!renderedUrl) return;
-    const a = document.createElement('a');
-    a.href = renderedUrl;
-    a.download = 'instagram-story-1080x1920.jpg';
-    a.click();
-  };
-
-  return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      {/* Left: 9:16 preview */}
-      <div className="space-y-4">
-        <GlassCard className="p-0 overflow-hidden">
-          <div
-            className="relative mx-auto overflow-hidden rounded-2xl"
-            style={{ width: '100%', maxWidth: 320, aspectRatio: '9/16' }}
-          >
-            {asset ? (
-              <AssetImg asset={asset} className="absolute inset-0" />
-            ) : (
-              <div className="absolute inset-0 bg-gray-900 flex items-center justify-center">
-                <ImageIcon className="w-12 h-12 text-gray-700" />
-              </div>
-            )}
-
-            {/* Overlay */}
-            <div
-              className="absolute inset-0"
-              style={{ background: overlayConfig.background }}
-            />
-
-            {/* Brand bar */}
-            <div className="absolute top-0 left-0 right-0 h-1.5 bg-indigo-500" />
-
-            {/* Text content */}
-            <div className="absolute bottom-0 left-0 right-0 p-6 flex flex-col gap-3">
-              <h2
-                className="font-black text-2xl leading-tight uppercase"
-                style={{ color: overlayConfig.headlineColor }}
-              >
-                {story.headline}
-              </h2>
-              <p className="text-sm leading-relaxed" style={{ color: overlayConfig.subtextColor }}>
-                {story.subtext}
-              </p>
-              <div
-                className="self-start px-5 py-2 rounded-full text-sm font-bold"
-                style={{
-                  background: overlayConfig.ctaBackground,
-                  color: overlayConfig.ctaColor,
-                }}
-              >
-                {story.ctaText}
-              </div>
-            </div>
-          </div>
-        </GlassCard>
-
-        <div className="flex gap-3">
-          <button
-            onClick={handleRender}
-            disabled={rendering || !asset}
-            className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-sm transition-all bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {rendering ? (
-              <>
-                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                Rendering...
-              </>
-            ) : (
-              <>
-                <Zap className="w-4 h-4" />
-                Render 1080×1920
-              </>
-            )}
-          </button>
-          {renderedUrl && (
-            <button
-              onClick={handleDownload}
-              className="flex items-center gap-2 px-4 py-3 rounded-xl font-semibold text-sm transition-all border text-gray-300 hover:text-white hover:border-white/20"
-              style={{ borderColor: 'rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)' }}
-            >
-              <Download className="w-4 h-4" />
-              Download
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Right: text fields */}
-      <div className="space-y-4">
-        <GlassCard>
-          <div className="flex items-center justify-between mb-2">
-            <SectionLabel>Headline</SectionLabel>
-            <CopyButton text={story.headline} />
-          </div>
-          <p className="text-white font-bold text-lg">{story.headline}</p>
-        </GlassCard>
-
-        <GlassCard>
-          <div className="flex items-center justify-between mb-2">
-            <SectionLabel>Subtext</SectionLabel>
-            <CopyButton text={story.subtext} />
-          </div>
-          <p className="text-gray-300 text-sm leading-relaxed">{story.subtext}</p>
-        </GlassCard>
-
-        <GlassCard>
-          <div className="flex items-center justify-between mb-2">
-            <SectionLabel>CTA Text</SectionLabel>
-            <CopyButton text={story.ctaText} />
-          </div>
-          <p className="text-indigo-300 font-semibold">{story.ctaText}</p>
-        </GlassCard>
-
-        <GlassCard>
-          <SectionLabel>Overlay Style</SectionLabel>
-          <p className="text-gray-400 text-sm mt-1 capitalize">{story.overlayStyle}</p>
-        </GlassCard>
-      </div>
-    </div>
-  );
-}
-
 // ─── Tab: Twitter/X ──────────────────────────────────────────────────────────
 
 function TwitterTab({ content, assets }: { content: GeneratedContent; assets: MediaAsset[] }) {
@@ -500,16 +352,23 @@ function ReelTab({ content, assets }: { content: GeneratedContent; assets: Media
     reel?.renderStatus ?? (reel?.renderId ? 'pending' : null)
   );
   const [videoUrl, setVideoUrl] = useState<string | null>(reel?.videoUrl ?? null);
-  const [renderError, setRenderError] = useState<string | null>(null);
+  const [renderError, setRenderError] = useState<string | null>(reel?.renderError ?? null);
+
+  // hasCreatomate: render was attempted (even if it failed)
+  const hasCreatomate = !!(reel?.renderId) || reel?.renderStatus === 'failed';
+
+  // Only poll if we have a real renderId (not 'failed' or 'attempted' sentinel)
+  const pollableRenderId = reel?.renderId && reel.renderId !== 'failed' && reel.renderId !== 'attempted' && reel.renderId !== ''
+    ? reel.renderId : null;
 
   // Poll render status every 4 seconds until done/failed
   useEffect(() => {
-    if (!reel?.renderId || renderStatus === 'done' || renderStatus === 'failed' || !reel.renderId) return;
+    if (!pollableRenderId || renderStatus === 'done' || renderStatus === 'failed') return;
 
     let cancelled = false;
     const poll = async () => {
       try {
-        const res = await fetch(`/api/reel-status/${reel.renderId}`);
+        const res = await fetch(`/api/reel-status/${pollableRenderId}`);
         if (!res.ok || cancelled) return;
         const data = await res.json() as { status: string; videoUrl?: string; errorMessage?: string };
         if (cancelled) return;
@@ -528,10 +387,10 @@ function ReelTab({ content, assets }: { content: GeneratedContent; assets: Media
       } catch { /* network error — keep polling */ }
     };
 
-    poll(); // immediate first check
+    poll();
     const interval = setInterval(poll, 4000);
     return () => { cancelled = true; clearInterval(interval); };
-  }, [reel?.renderId, renderStatus]);
+  }, [pollableRenderId, renderStatus]);
 
   if (!reel) return (
     <div className="text-center py-20 text-white/30">
@@ -556,8 +415,6 @@ function ReelTab({ content, assets }: { content: GeneratedContent; assets: Media
     '',
     reel.hashtags.map(h => h.startsWith('#') ? h : `#${h}`).join(' '),
   ].join('\n');
-
-  const hasCreatomate = !!reel.renderId;
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -727,7 +584,6 @@ export default function ResultsDashboard({ content, assets, brief, onReset }: Pr
 
   const buildExportText = useCallback(() => {
     const li = content.linkedin;
-    const story = content.instagramStory;
     const tw = content.twitter;
     const isReel = brief.instagramType === 'reel';
 
@@ -771,14 +627,6 @@ export default function ResultsDashboard({ content, assets, brief, onReset }: Pr
         '',
         content.instagramPost.hashtags.map((h) => (h.startsWith('#') ? h : `#${h}`)).join(' '),
       ]),
-      '',
-      `${'='.repeat(60)}`,
-      '',
-      `INSTAGRAM STORY`,
-      `${'─'.repeat(40)}`,
-      `Headline: ${story.headline}`,
-      `Subtext: ${story.subtext}`,
-      `CTA: ${story.ctaText}`,
       '',
       `${'='.repeat(60)}`,
       '',
@@ -900,9 +748,6 @@ export default function ResultsDashboard({ content, assets, brief, onReset }: Pr
               brief.instagramType === 'reel'
                 ? <ReelTab content={content} assets={assets} />
                 : <InstagramTab content={content} assets={assets} />
-            )}
-            {activeTab === 'story' && (
-              <StoryTab content={content} assets={assets} />
             )}
             {activeTab === 'twitter' && (
               <TwitterTab content={content} assets={assets} />

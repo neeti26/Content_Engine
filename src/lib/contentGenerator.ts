@@ -1,6 +1,6 @@
 ﻿import {
   EventBrief, MediaAsset, LinkedInContent, InstagramPostContent,
-  InstagramReelContent, InstagramStoryContent, TwitterContent,
+  InstagramReelContent, TwitterContent,
   CaseStudyContent, WhatsAppContent,
 } from '@/types';
 import { generateJSON } from './gemini';
@@ -10,24 +10,36 @@ type AssetWithDesc = MediaAsset & { description?: string };
 // ─── LinkedIn ────────────────────────────────────────────────────────────────
 export async function generateLinkedInContent(brief: EventBrief, asset: AssetWithDesc): Promise<LinkedInContent> {
   const result = await generateJSON<LinkedInContent>(
-    `You are a B2B LinkedIn copywriter. Tone: ${brief.tone}. Never start with "We", "I", "Our", or "Excited". Write a hook-first post with short paragraphs.`,
-    `Write a LinkedIn post for this event:
-Event: ${brief.eventName} by ${brief.brandName}
-Type: ${brief.eventType}, Location: ${brief.location}
-Highlights: ${brief.keyHighlights}
-Audience: ${brief.targetAudience}
-Photo context: ${asset.description ?? "event highlights"}
+    `You are a senior B2B LinkedIn content strategist. Tone: ${brief.tone}.
+RULES:
+- Never open with "We", "I", "Our", "Excited", or "Thrilled"
+- Open with a bold hook: a surprising stat, a provocative question, or a one-line story
+- Write in short paragraphs (2-3 sentences max each), separated by blank lines
+- Include at least ONE specific number, metric, or concrete detail from the highlights
+- The body must be 200-280 words — substantial enough to drive real engagement
+- End with an open-ended question that invites comments
+- Hashtags: mix of 3 broad + 4 specific to the event/industry`,
+    `Write a full LinkedIn post for this event:
 
-Return this JSON:
+Event: ${brief.eventName}
+Brand: ${brief.brandName}
+Type: ${brief.eventType}
+Location: ${brief.location}
+Date: ${brief.date}
+Key Highlights: ${brief.keyHighlights}
+Target Audience: ${brief.targetAudience}
+Visual: ${asset.description ?? 'event highlights photo'}
+
+Return ONLY this JSON:
 {
-  "headline": "one punchy hook line under 100 chars",
-  "body": "3 short paragraphs separated by newlines, ends with a question",
-  "hashtags": ["#Marketing","#Events","#Brand","#Innovation","#Leadership","#EventMarketing","#BrandActivation"],
-  "callToAction": "specific call to action",
+  "headline": "Hook line — one sentence, under 120 chars, stops the scroll",
+  "body": "Full post body — 200 to 280 words across 4-5 short paragraphs. Include specific details from the highlights. First paragraph sets the scene. Second paragraph shares the key insight or moment. Third paragraph zooms into impact or numbers. Fourth paragraph connects it to a bigger trend or lesson. Final line is a genuine open question to the audience.",
+  "hashtags": ["#EventMarketing","#BrandActivation","#Marketing","#Leadership","#Innovation","#Networking","#Growth"],
+  "callToAction": "specific, action-oriented CTA (e.g. 'Drop your biggest takeaway below 👇')",
   "selectedImageId": "${asset.id}",
   "characterCount": 0
 }`,
-    1500
+    2000
   );
   return { ...result, selectedImageId: asset.id, characterCount: ((result.headline ?? '') + (result.body ?? '')).length };
 }
@@ -52,26 +64,6 @@ Return this JSON:
     1200
   );
   return { ...result, selectedImageId: asset.id, characterCount: result.caption?.length ?? 0 };
-}
-
-// ─── Instagram Story ─────────────────────────────────────────────────────────
-export async function generateInstagramStoryContent(brief: EventBrief, asset: AssetWithDesc): Promise<InstagramStoryContent> {
-  const result = await generateJSON<InstagramStoryContent>(
-    `You design Instagram Story text overlays. Keep it SHORT and BOLD. Think billboard.`,
-    `Create a Story overlay for: ${brief.eventName} by ${brief.brandName}. Tone: ${brief.tone}.
-Highlight: ${brief.keyHighlights.split(',')[0]?.trim() ?? brief.keyHighlights}
-
-Return this JSON:
-{
-  "headline": "3 TO 4 WORDS ALL CAPS",
-  "subtext": "6 to 8 words of context",
-  "ctaText": "2 to 3 words",
-  "selectedImageId": "${asset.id}",
-  "overlayStyle": "gradient"
-}`,
-    300
-  );
-  return { ...result, selectedImageId: asset.id };
 }
 
 // ─── Twitter/X Thread ────────────────────────────────────────────────────────
@@ -147,10 +139,9 @@ Return this JSON:
 }
 
 // ─── Instagram Reel ──────────────────────────────────────────────────────────
-
 export async function generateInstagramReelContent(brief: EventBrief, asset: AssetWithDesc): Promise<InstagramReelContent> {
   const result = await generateJSON<InstagramReelContent>(
-    `You are a world-class Instagram Reel director. You create viral, emotionally engaging 30-second Reels for brand events. You write scripts that match the actual footage available. Tone: ${brief.tone}.`,
+    `You are a world-class Instagram Reel director. You create viral, emotionally engaging 30-second Reels for brand events. Tone: ${brief.tone}.`,
     `Create a production-ready 30-second Instagram Reel script for this event.
 
 EVENT DETAILS:
@@ -164,30 +155,29 @@ EVENT DETAILS:
 - Visual available: ${asset.description ?? 'event photos and video clips'}
 
 INSTRUCTIONS:
-- The hook (shot 1) must be 3 seconds and stop scrolling — ALL CAPS, maximum impact
-- Each shot description tells the video editor exactly what clip/photo to use
-- On-screen text must be SHORT (max 6 words), bold, matches the energy of the shot
-- The voiceover should match each shot timing precisely
-- Music mood should match brand tone
-- Caption should feel personal and end with a question to drive comments
-- Hashtags should mix broad (#Reels) and niche (#${brief.eventType.replace(/\s+/g, '')})
+- Hook (shot 1): 3 seconds, ALL CAPS, scroll-stopping
+- Each shot description: exact clip/photo type to use
+- On-screen text: max 6 words, bold, high energy
+- Voiceover: match timing to each shot precisely
+- Music mood: specific style matching brand tone
+- Caption: personal, ends with question to drive comments
 
-Return ONLY this JSON (no extra text):
+Return ONLY this JSON:
 {
-  "hook": "ALL CAPS scroll-stopping text, max 8 words — e.g. WE JUST CHANGED THE GAME",
+  "hook": "ALL CAPS scroll-stopping text, max 8 words",
   "duration": "30s",
   "shotList": [
-    {"shot": 1, "duration": "0-3s",  "description": "Dramatic reveal — best single hero image or opening video clip, full frame", "onScreenText": "HOOK TEXT HERE"},
-    {"shot": 2, "duration": "3-8s",  "description": "Crowd or attendee energy shots — faces, reactions, excitement", "onScreenText": "Short punchy text"},
-    {"shot": 3, "duration": "8-14s", "description": "Key moment or highlight — keynote, product demo, or standout visual", "onScreenText": "Key stat or moment"},
-    {"shot": 4, "duration": "14-20s","description": "Behind the scenes or candid moments — authentic, human", "onScreenText": "Brand voice text"},
-    {"shot": 5, "duration": "20-26s","description": "Brand showcase — logo, stage, banners, branded moments", "onScreenText": "Brand name or tagline"},
-    {"shot": 6, "duration": "26-30s","description": "Closing wide shot or best group photo — epic final frame", "onScreenText": "Call to action"}
+    {"shot": 1, "duration": "0-3s",  "description": "Dramatic reveal — hero image or opening clip, full frame", "onScreenText": "HOOK TEXT"},
+    {"shot": 2, "duration": "3-8s",  "description": "Crowd/attendee energy — faces, reactions, excitement", "onScreenText": "Punchy text"},
+    {"shot": 3, "duration": "8-14s", "description": "Key moment — keynote, demo, or standout visual", "onScreenText": "Key stat"},
+    {"shot": 4, "duration": "14-20s","description": "Behind scenes — authentic, candid, human moments", "onScreenText": "Brand voice"},
+    {"shot": 5, "duration": "20-26s","description": "Brand showcase — logo, stage, banners", "onScreenText": "Brand tagline"},
+    {"shot": 6, "duration": "26-30s","description": "Epic closing — best group photo or wide shot", "onScreenText": "Follow us"}
   ],
-  "voiceoverScript": "A punchy, energetic 30-second voiceover script. Match each sentence to the shot it covers. Use short sentences. Build to a climax. End with CTA.",
-  "musicMood": "Specific music style that fits brand tone — e.g. High-energy hip-hop, Cinematic orchestral swell, Upbeat indie pop",
-  "caption": "Hook emoji + 2 punchy sentences referencing actual event highlights + question to drive comments. Max 80 words.",
-  "hashtags": ["#Reels","#${brief.brandName.replace(/\s+/g, '')}","#${brief.eventName.replace(/\s+/g, '')}","#EventMarketing","#BehindTheScenes","#${brief.eventType.replace(/\s+/g, '')}","#Marketing","#Brand","#BusinessEvents","#Networking","#Innovation","#Leadership","#Growth","#Viral","#ContentCreator"],
+  "voiceoverScript": "Punchy 30-second voiceover matched to each shot. Short sentences. Builds to climax. Ends with CTA.",
+  "musicMood": "Specific music style matching brand tone",
+  "caption": "Hook emoji + 2 punchy sentences about actual highlights + question. Max 80 words.",
+  "hashtags": ["#Reels","#${brief.brandName.replace(/\s+/g, '')}","#${brief.eventName.replace(/\s+/g, '')}","#EventMarketing","#BehindTheScenes","#Marketing","#Brand","#Innovation","#Leadership","#Growth","#Viral","#ContentCreator","#BusinessEvents","#Networking","#${brief.eventType.replace(/\s+/g, '')}"],
   "selectedImageId": "${asset.id}"
 }`,
     2000

@@ -18,13 +18,6 @@ export async function POST() {
       selectedImageId: "demo-2",
       characterCount: 498,
     },
-    instagramStory: {
-      headline: "WE MADE HISTORY",
-      subtext: "500+ leaders, 3 days, infinite ideas",
-      ctaText: "See More",
-      selectedImageId: "demo-3",
-      overlayStyle: "gradient",
-    },
     twitter: {
       threadHook: "TechSummit 2026 just wrapped. 500+ marketing leaders. 3 days. Here's what you missed 🧵",
       tweets: [
@@ -66,7 +59,6 @@ export async function POST() {
     selectedAssets: {
       linkedin: "demo-1",
       instagramPost: "demo-2",
-      instagramStory: "demo-3",
       twitter: "demo-2",
       whatsapp: "demo-2",
       caseStudy: ["demo-1","demo-2","demo-3","demo-4"],

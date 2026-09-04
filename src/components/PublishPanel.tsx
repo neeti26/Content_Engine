@@ -122,7 +122,6 @@ export default function PublishPanel({ content, assets, brief, onClose }: Props)
 
       folder.file('linkedin-post.txt', `HEADLINE\n${li.headline}\n\nBODY\n${li.body}\n\nHASHTAGS\n${li.hashtags.join(' ')}\n\nCTA\n${li.callToAction}`);
       folder.file('instagram-caption.txt', `CAPTION\n${ig.caption}\n\nHASHTAGS\n${ig.hashtags.join(' ')}`);
-      folder.file('instagram-story.txt', `HEADLINE: ${content.instagramStory.headline}\nSUBTEXT: ${content.instagramStory.subtext}\nCTA: ${content.instagramStory.ctaText}`);
       folder.file('twitter-thread.txt', tw.tweets.map((t, i) => `[${i+1}] ${t}`).join('\n\n'));
       folder.file('whatsapp.txt', `STATUS: ${wa.statusText}\n\nMESSAGE:\n${wa.caption}`);
       folder.file('case-study.txt', [
@@ -138,7 +137,6 @@ export default function PublishPanel({ content, assets, brief, onClose }: Props)
       const platforms: Array<{ name: string; id: string }> = [
         { name: 'linkedin', id: content.selectedAssets.linkedin },
         { name: 'instagram-post', id: content.selectedAssets.instagramPost },
-        { name: 'instagram-story', id: content.selectedAssets.instagramStory },
         { name: 'twitter', id: content.selectedAssets.twitter },
         { name: 'whatsapp', id: content.selectedAssets.whatsapp },
       ];
