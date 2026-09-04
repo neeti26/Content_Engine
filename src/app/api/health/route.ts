@@ -14,7 +14,7 @@ export async function GET() {
       const key = process.env.GEMINI_API_KEY_1 ?? process.env.GEMINI_API_KEY ?? '';
       const ai = new GoogleGenAI({ apiKey: key });
       const res = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-2.5-flash-lite',
         contents: [{ role: 'user', parts: [{ text: 'Reply with just the word: OK' }] }],
         config: { maxOutputTokens: 10, temperature: 0 },
       });

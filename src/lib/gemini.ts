@@ -38,8 +38,8 @@ export function hasAnyGeminiKey(): boolean {
 }
 
 // ─── Models ───────────────────────────────────────────────────────────────────
-// Current stable models as of Sep 2026 per https://ai.google.dev/gemini-api/docs/models
-const MODELS = ["gemini-2.5-flash", "gemini-2.5-flash-lite"];
+// flash-lite first — higher free-tier RPM. flash as fallback for complex calls.
+const MODELS = ["gemini-2.5-flash-lite", "gemini-2.5-flash"];
 const sleep  = (ms: number) => new Promise<void>(r => setTimeout(r, ms));
 
 // ─── JSON Parser ──────────────────────────────────────────────────────────────
