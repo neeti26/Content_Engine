@@ -10,6 +10,10 @@ import Logo from '@/components/Logo';
 interface Props {
   onStart: () => void;
   onDemo: () => void;
+  isSignedIn?: boolean;
+  userEmail?: string;
+  onShowHistory?: () => void;
+  onSignOut?: () => void;
 }
 
 const outputs = [
@@ -26,7 +30,7 @@ const steps = [
   { n: '04', label: 'Get 4 Outputs',       sub: 'Copy, download, export' },
 ];
 
-export default function HeroSection({ onStart, onDemo }: Props) {
+export default function HeroSection({ onStart, onDemo, isSignedIn, userEmail, onShowHistory }: Props) {
   return (
     <div className="min-h-screen flex flex-col relative overflow-hidden">
 
@@ -52,6 +56,22 @@ export default function HeroSection({ onStart, onDemo }: Props) {
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 pulse-dot" />
           <span className="hidden sm:inline">Powered by Gemini AI</span>
         </div>
+        {isSignedIn && (
+          <button
+            onClick={onShowHistory}
+            className="hidden sm:flex items-center gap-1.5 text-xs text-white/40 hover:text-white border border-white/10 hover:border-white/20 px-3 py-1.5 rounded-full transition-all"
+          >
+            <span>History</span>
+          </button>
+        )}
+        {!isSignedIn && (
+          <a
+            href="/sign-in"
+            className="hidden sm:flex items-center gap-1.5 text-xs text-white/50 hover:text-white border border-white/10 hover:border-white/20 px-3 py-1.5 rounded-full transition-all"
+          >
+            Sign in
+          </a>
+        )}
       </nav>
 
       {/* Hero body */}

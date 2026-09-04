@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@clerk/nextjs/server';
 import { EventBrief, MediaAsset } from '@/types';
 import { runPipeline } from '@/lib/pipeline';
 import { hasAnyGeminiKey } from '@/lib/gemini';
@@ -70,7 +71,10 @@ export async function POST(req: NextRequest) {
   }
 
   const ip = getClientIp(req);
-  const limit = checkRateLimit(ip, 5, 60 * 60 * 1000);
+  // Use Clerk user ID for rate limiting when signed in (per-user, not per-IP)
+  const { userId } = await auth();
+  const rateLimitKey = userId ?? ip;
+  const limit = checkRateLimit(rateLimitKey, 5, 60 * 60 * 1000);
   if (!limit.allowed) {
     const resetIn = Math.ceil((limit.resetAt - Date.now()) / 60000);
     return NextResponse.json(

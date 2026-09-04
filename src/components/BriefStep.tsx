@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, ArrowRight, Zap, Sparkles, AlertCircle, X, Film, Image } from 'lucide-react';
 import { EventBrief } from '@/types';
+import { BrandKit } from '@/lib/supabase';
 
 interface Props {
   assetCount: number;
@@ -11,6 +12,7 @@ interface Props {
   onBack: () => void;
   errorMsg?: string | null;
   onClearError?: () => void;
+  brandKit?: BrandKit | null;
 }
 
 const tones: { value: EventBrief['tone']; emoji: string; label: string; desc: string }[] = [
@@ -26,11 +28,13 @@ const eventTypes = [
   'Sports Event','CSR Initiative','Other',
 ];
 
-export default function BriefStep({ assetCount, onSubmit, onBack, errorMsg, onClearError }: Props) {
+export default function BriefStep({ assetCount, onSubmit, onBack, errorMsg, onClearError, brandKit }: Props) {
   const [form, setForm] = useState<EventBrief>({
-    eventName: '', brandName: '', eventType: 'Brand Activation',
-    location: '', date: '', keyHighlights: '', targetAudience: '',
-    tone: 'professional', instagramType: 'post',
+    eventName: '', brandName: brandKit?.brand_name ?? '', eventType: 'Brand Activation',
+    location: '', date: '', keyHighlights: '',
+    targetAudience: brandKit?.target_audience ?? '',
+    tone: (brandKit?.tone as EventBrief['tone']) ?? 'professional',
+    instagramType: 'post',
   });
   const [loading, setLoading] = useState(false);
 
@@ -56,7 +60,7 @@ export default function BriefStep({ assetCount, onSubmit, onBack, errorMsg, onCl
         </button>
         <div>
           <h2 className="font-bold text-white text-sm">Event Brief</h2>
-          <p className="text-white/30 text-xs">Step 2 of 2 · {assetCount} file{assetCount !== 1 ? 's' : ''} ready</p>
+          <p className="text-white/30 text-xs">Step 2 of 2 · {assetCount} file{assetCount !== 1 ? 's' : ''} ready{brandKit?.brand_name ? ` · ${brandKit.brand_name} kit loaded` : ''}</p>
         </div>
         <div className="ml-auto flex items-center gap-1.5">
           <div className="w-8 h-1.5 rounded-full bg-white/10" />
