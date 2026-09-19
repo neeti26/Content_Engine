@@ -3,7 +3,7 @@
 import { motion } from 'framer-motion';
 import {
   Zap, Instagram, Linkedin, ArrowRight,
-  Brain, Twitter, Sparkles, Play
+  Brain, Twitter, Sparkles, Play, MessageCircle, Film
 } from 'lucide-react';
 import Logo from '@/components/Logo';
 
@@ -17,17 +17,18 @@ interface Props {
 }
 
 const outputs = [
-  { icon: Linkedin,  color: '#3b82f6', label: 'LinkedIn Post',    desc: 'B2B narrative + CTA' },
-  { icon: Instagram, color: '#ec4899', label: 'Instagram Post',   desc: 'Caption + 30 hashtags' },
-  { icon: Instagram, color: '#f97316', label: 'IG Story',         desc: '1080×1920 rendered' },
-  { icon: Twitter,   color: '#38bdf8', label: 'Twitter Thread',   desc: '5-tweet viral thread' },
+  { icon: Linkedin,       color: '#3b82f6', label: 'LinkedIn Post',    desc: 'B2B narrative + CTA' },
+  { icon: Instagram,      color: '#ec4899', label: 'Instagram Post',   desc: 'Caption + 30 hashtags' },
+  { icon: Film,           color: '#a855f7', label: 'IG Reel',          desc: 'Shot list + MP4 render' },
+  { icon: Twitter,        color: '#38bdf8', label: 'Twitter Thread',   desc: '5-tweet viral thread' },
+  { icon: MessageCircle,  color: '#22c55e', label: 'WhatsApp',         desc: 'Status + message copy' },
 ];
 
 const steps = [
-  { n: '01', label: 'Upload Photos',       sub: 'Up to 20 event images' },
+  { n: '01', label: 'Upload Photos',       sub: 'Up to 20 photos & videos' },
   { n: '02', label: 'Describe Your Event', sub: 'Name, brand, highlights' },
   { n: '03', label: 'AI Processes',        sub: 'Scores + selects + generates' },
-  { n: '04', label: 'Get 4 Outputs',       sub: 'Copy, download, export' },
+  { n: '04', label: 'Get 5 Outputs',       sub: 'Copy, download, export' },
 ];
 
 export default function HeroSection({ onStart, onDemo, isSignedIn, userEmail, onShowHistory }: Props) {
@@ -52,26 +53,25 @@ export default function HeroSection({ onStart, onDemo, isSignedIn, userEmail, on
           <Logo size={36} />
           <span className="font-black text-white text-sm tracking-tight">Content Engine</span>
         </div>
-        <div className="flex items-center gap-1.5 text-xs text-emerald-300 bg-emerald-400/15 border border-emerald-400/30 px-3 py-1.5 rounded-full">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 pulse-dot" />
-          <span className="hidden sm:inline">Powered by Gemini AI</span>
+        <div className="flex items-center gap-2">
+          {isSignedIn && (
+            <button
+              onClick={onShowHistory}
+              className="flex items-center gap-1.5 text-xs text-white/50 hover:text-white border border-white/10 hover:border-white/20 px-3 py-1.5 rounded-full transition-all"
+            >
+              History
+            </button>
+          )}
+          {!isSignedIn && (
+            <a
+              href="/sign-in"
+              className="flex items-center gap-1.5 text-xs font-semibold text-white border border-violet-500/40 hover:border-violet-400/60 px-4 py-1.5 rounded-full transition-all"
+              style={{ background: 'rgba(124,58,237,0.15)' }}
+            >
+              Sign in
+            </a>
+          )}
         </div>
-        {isSignedIn && (
-          <button
-            onClick={onShowHistory}
-            className="hidden sm:flex items-center gap-1.5 text-xs text-white/40 hover:text-white border border-white/10 hover:border-white/20 px-3 py-1.5 rounded-full transition-all"
-          >
-            <span>History</span>
-          </button>
-        )}
-        {!isSignedIn && (
-          <a
-            href="/sign-in"
-            className="hidden sm:flex items-center gap-1.5 text-xs text-white/50 hover:text-white border border-white/10 hover:border-white/20 px-3 py-1.5 rounded-full transition-all"
-          >
-            Sign in
-          </a>
-        )}
       </nav>
 
       {/* Hero body */}
@@ -96,7 +96,7 @@ export default function HeroSection({ onStart, onDemo, isSignedIn, userEmail, on
             }}
           >
             <Brain className="w-3.5 h-3.5 text-fuchsia-300" />
-            <span className="text-fuchsia-100 text-xs font-bold tracking-widest uppercase">AI-powered · photo scoring · 4 platform outputs</span>
+            <span className="text-fuchsia-100 text-xs font-bold tracking-widest uppercase">AI-powered · photo scoring · 5 platform outputs</span>
             <Sparkles className="w-3.5 h-3.5 text-fuchsia-300" />
           </motion.div>
 
@@ -104,7 +104,7 @@ export default function HeroSection({ onStart, onDemo, isSignedIn, userEmail, on
           <h1 className="text-5xl sm:text-6xl md:text-[72px] font-black text-white mb-4 leading-[1.04] tracking-tight">
             Raw Event Photos
             <br />
-            <span className="gradient-text-shimmer">→ 4 Publish-Ready</span>
+            <span className="gradient-text-shimmer">→ 5 Publish-Ready</span>
             <br />
             <span className="gradient-text">Marketing Assets</span>
           </h1>
@@ -117,7 +117,7 @@ export default function HeroSection({ onStart, onDemo, isSignedIn, userEmail, on
           </div>
 
           <p className="text-violet-100/85 text-base max-w-lg mx-auto mb-8 leading-relaxed font-medium">
-            Upload photos, describe your event — get LinkedIn, Instagram, Story, and a Twitter thread in <span className="text-fuchsia-300 font-bold">under 30 seconds</span>. Zero manual work.
+            Upload photos and videos, describe your event — get LinkedIn, Instagram, Reel, Twitter, and WhatsApp content in <span className="text-fuchsia-300 font-bold">under 30 seconds</span>. Zero manual work.
           </p>
 
           {/* CTAs */}
@@ -183,7 +183,7 @@ export default function HeroSection({ onStart, onDemo, isSignedIn, userEmail, on
           </div>
 
           {/* Output cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-xl mx-auto w-full">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 max-w-2xl mx-auto w-full">
             {outputs.map((o, i) => (
               <motion.div
                 key={o.label}
