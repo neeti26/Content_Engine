@@ -21,7 +21,7 @@ export async function GET() {
       try {
         const ai = new GoogleGenAI({ apiKey: keys[ki] });
         const res = await ai.models.generateContent({
-          model: 'gemini-2.5-flash-lite',
+          model: 'gemini-3.6-flash',
           contents: [{ role: 'user', parts: [{ text: 'Reply with just the word: OK' }] }],
           config: { maxOutputTokens: 10, temperature: 0 },
         });

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
 import { supabaseAdmin } from '@/lib/supabase';
+import { currentUserId } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -8,7 +8,7 @@ export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { userId } = await auth();
+  const userId = await currentUserId();
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { id } = await params;

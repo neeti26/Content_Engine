@@ -1,12 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
 import { EventBrief, MediaAsset } from '@/types';
 import { runPipeline } from '@/lib/pipeline';
 import { hasAnyGeminiKey } from '@/lib/gemini';
 import { checkRateLimit } from '@/lib/rateLimit';
+import { withRequestDeadline } from '@/lib/deadline';
+import { currentUserId } from '@/lib/auth';
 
 export const maxDuration = 300;
 export const dynamic = 'force-dynamic';
+
+// Wall-clock budget for the whole pipeline. The function is killed at 300s by
+// the platform and a killed function reaches the browser as "Failed to fetch",
+// so we always answer well before that.
+const PIPELINE_BUDGET_MS = 210_000;
 
 function getClientIp(req: NextRequest): string {
   return (
@@ -19,6 +25,13 @@ function getClientIp(req: NextRequest): string {
 function friendlyError(err: unknown): { message: string; retryable: boolean } {
   const msg = err instanceof Error ? err.message : String(err);
 
+  if (msg.includes('DAILY_QUOTA')) {
+    const reset = msg.match(/resets in ([^)]+)\)?/)?.[1]?.trim();
+    return {
+      message: `The AI daily free-tier quota is used up. It resets in ${reset ?? 'about 24 hours'} — please try again later.`,
+      retryable: true,
+    };
+  }
   if (msg.includes('GEMINI_API_KEY') || msg.includes('not configured')) {
     return {
       message: 'The AI service is not configured. Please add your GEMINI_API_KEY in Vercel environment variables.',
@@ -72,7 +85,7 @@ export async function POST(req: NextRequest) {
 
   const ip = getClientIp(req);
   // Use Clerk user ID for rate limiting when signed in (per-user, not per-IP)
-  const { userId } = await auth();
+  const userId = await currentUserId();
   const rateLimitKey = userId ?? ip;
   const limit = checkRateLimit(rateLimitKey, 5, 60 * 60 * 1000);
   if (!limit.allowed) {
@@ -111,7 +124,7 @@ export async function POST(req: NextRequest) {
   console.log(`[Process] Starting pipeline: ${assets.length} assets, event="${brief.eventName}", instagram=${brief.instagramType}`);
 
   try {
-    const result = await runPipeline(brief, assets);
+    const result = await withRequestDeadline(PIPELINE_BUDGET_MS, () => runPipeline(brief, assets));
     console.log(`[Process] Pipeline complete for "${brief.eventName}"`);
     return NextResponse.json({ result }, { status: 200 });
   } catch (err) {

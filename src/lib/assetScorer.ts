@@ -1,5 +1,6 @@
 import { MediaAsset, AssetScore } from '@/types';
 import { scoreAndDescribeImage, generateJSON } from './gemini';
+import { deadlineExceeded } from './deadline';
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -12,6 +13,13 @@ export async function scoreAllAssets(
 
   for (let i = 0; i < assets.length; i += BATCH) {
     const batch = assets.slice(i, i + BATCH);
+
+    // Out of time — score the rest with defaults so the request still finishes
+    if (deadlineExceeded()) {
+      for (const asset of batch) scored.push(fallbackScored(asset));
+      continue;
+    }
+
     const results = await Promise.allSettled(
       batch.map((a) => {
         const base64  = a.type === 'video' && a.thumbnailBase64 ? a.thumbnailBase64 : a.base64;
@@ -38,17 +46,21 @@ export async function scoreAllAssets(
           } as AssetScore,
         });
       } else {
-        scored.push({
-          ...asset,
-          description: asset.type === 'video' ? 'Event video' : 'Event photo',
-          score: defaultScore(),
-        });
+        scored.push(fallbackScored(asset));
       }
     }
     if (i + BATCH < assets.length) await sleep(1500);
   }
 
   return scored;
+}
+
+function fallbackScored(asset: MediaAsset): MediaAsset & { description: string } {
+  return {
+    ...asset,
+    description: asset.type === 'video' ? 'Event video' : 'Event photo',
+    score: defaultScore(),
+  };
 }
 
 export async function selectBestAssets(

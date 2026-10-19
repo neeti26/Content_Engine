@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
 import { supabaseAdmin } from '@/lib/supabase';
+import { currentUserId } from '@/lib/auth';
 import { EventBrief, GeneratedContent } from '@/types';
 
 export const dynamic = 'force-dynamic';
 
 // POST /api/generations — save a generation
 export async function POST(req: NextRequest) {
-  const { userId } = await auth();
+  const userId = await currentUserId();
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const body = await req.json() as {
@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
 
 // GET /api/generations — list user's generations
 export async function GET() {
-  const { userId } = await auth();
+  const userId = await currentUserId();
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const db = supabaseAdmin();

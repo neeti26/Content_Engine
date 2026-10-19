@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
 import { supabaseAdmin, BrandKit } from '@/lib/supabase';
+import { currentUserId } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
 // GET — fetch user's brand kit
 export async function GET() {
-  const { userId } = await auth();
+  const userId = await currentUserId();
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const db = supabaseAdmin();
@@ -22,7 +22,7 @@ export async function GET() {
 
 // POST — upsert user's brand kit
 export async function POST(req: NextRequest) {
-  const { userId } = await auth();
+  const userId = await currentUserId();
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const body = await req.json() as Partial<BrandKit>;

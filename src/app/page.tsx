@@ -16,8 +16,21 @@ import { History, LogOut, User } from 'lucide-react';
 
 type AppStep = 'hero' | 'upload' | 'brief' | 'processing' | 'results';
 
+// The server pipeline is capped well below this — the client timeout only
+// exists so a dropped connection shows a real message instead of a bare
+// "Failed to fetch".
+const REQUEST_TIMEOUT_MS = 240_000;
+
+// Clerk is optional. `useUser()` may only be called inside <ClerkProvider />,
+// which is only rendered when Clerk is configured. The flag is a build-time
+// constant, so the hook order never changes between renders.
+const clerkEnabled = !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+
 export default function Home() {
-  const { user, isSignedIn, isLoaded } = useUser();
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const { user, isSignedIn, isLoaded } = clerkEnabled
+    ? useUser()
+    : { user: null, isSignedIn: false, isLoaded: true };
 
   const [step, setStep]                         = useState<AppStep>('hero');
   const [assets, setAssets]                     = useState<MediaAsset[]>([]);
@@ -58,21 +71,38 @@ export default function Home() {
       mimeType: rest.mimeType,
     }));
 
-    const promise = fetch('/api/process', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ brief: eventBrief, assets: apiAssets }),
-    }).then(async (res) => {
-      const contentType = res.headers.get('content-type') ?? '';
-      if (!contentType.includes('application/json')) {
-        const text = await res.text();
-        throw new Error(`Server error (${res.status}): ${text.slice(0, 120)}`);
+    const promise = (async () => {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+      try {
+        const res = await fetch('/api/process', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ brief: eventBrief, assets: apiAssets }),
+          signal: controller.signal,
+        });
+        const contentType = res.headers.get('content-type') ?? '';
+        if (!contentType.includes('application/json')) {
+          const text = await res.text();
+          throw new Error(`Server error (${res.status}): ${text.slice(0, 120)}`);
+        }
+        const data = await res.json() as { result?: GeneratedContent; error?: string };
+        if (!res.ok || data.error) throw new Error(data.error ?? 'Processing failed');
+        if (!data.result) throw new Error('No result returned from server');
+        return data.result;
+      } catch (err) {
+        if (err instanceof DOMException && err.name === 'AbortError') {
+          throw new Error('The server took too long to respond. Please try again with fewer photos.');
+        }
+        if (err instanceof TypeError) {
+          // Network-level failure — the request never got an answer back.
+          throw new Error('Could not reach the server. Please check your connection and try again.');
+        }
+        throw err;
+      } finally {
+        clearTimeout(timer);
       }
-      const data = await res.json() as { result?: GeneratedContent; error?: string };
-      if (!res.ok || data.error) throw new Error(data.error ?? 'Processing failed');
-      if (!data.result) throw new Error('No result returned from server');
-      return data.result;
-    });
+    })();
 
     setProcessingPromise(promise);
     setStep('processing');

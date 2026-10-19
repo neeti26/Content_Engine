@@ -17,6 +17,18 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const html = (
+    <html lang="en" className={inter.variable}>
+      <body className="bg-gray-950 text-gray-100 antialiased min-h-screen">
+        {children}
+      </body>
+    </html>
+  );
+
+  // Clerk is optional — without a publishable key the provider would throw and
+  // take the whole app down, so render the app un-wrapped instead.
+  if (!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) return html;
+
   return (
     <ClerkProvider
       appearance={{
@@ -37,11 +49,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         },
       }}
     >
-      <html lang="en" className={inter.variable}>
-        <body className="bg-gray-950 text-gray-100 antialiased min-h-screen">
-          {children}
-        </body>
-      </html>
+      {html}
     </ClerkProvider>
   );
 }
