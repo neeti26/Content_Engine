@@ -9,7 +9,7 @@
  * URL.
  */
 
-import { put, del } from '@vercel/blob';
+import { put, del, list } from '@vercel/blob';
 import { InstagramReelContent, ShotListItem, MediaAsset } from '@/types';
 
 const REEL_WIDTH  = 1080;
@@ -309,6 +309,27 @@ async function cleanupAssets(urls: string[]): Promise<void> {
   }
 }
 
+/**
+ * The uploads of a render can only be deleted by the instance that made them,
+ * so a poll on a different instance would leave them behind. Sweep the
+ * leftovers: every upload older than an hour has served its render.
+ */
+async function sweepOldUploads(): Promise<void> {
+  try {
+    const { blobs } = await list({ prefix: 'reel/', token: process.env.BLOB_READ_WRITE_TOKEN });
+    const cutoff = Date.now() - 60 * 60 * 1000;
+    const stale = blobs
+      .filter(b => new Date(b.uploadedAt).getTime() < cutoff)
+      .map(b => b.url);
+    if (stale.length) {
+      await del(stale, { token: process.env.BLOB_READ_WRITE_TOKEN });
+      console.log(`[Creatomate] Swept ${stale.length} expired upload(s)`);
+    }
+  } catch (err) {
+    console.warn('[Creatomate] Upload sweep failed:', String(err).slice(0, 160));
+  }
+}
+
 export async function fetchReelStatus(renderId: string): Promise<ReelRenderResult> {
   const apiKey = process.env.CREATOMATE_API_KEY;
   if (!apiKey) return { renderId, status: 'failed', errorMessage: 'API key not configured' };
@@ -337,6 +358,7 @@ export async function fetchReelStatus(renderId: string): Promise<ReelRenderResul
         uploadedAssets.delete(renderId);
         await cleanupAssets(urls);
       }
+      await sweepOldUploads();
     }
   }
 }
