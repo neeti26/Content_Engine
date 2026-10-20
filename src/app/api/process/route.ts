@@ -13,6 +13,8 @@ export const dynamic = 'force-dynamic';
 // the platform and a killed function reaches the browser as "Failed to fetch",
 // so we always answer well before that.
 const PIPELINE_BUDGET_MS = 150_000;
+// Absolute stop — the response goes out even if the pipeline is still running.
+const HARD_LIMIT_MS = 255_000;
 
 function getClientIp(req: NextRequest): string {
   return (
@@ -25,6 +27,12 @@ function getClientIp(req: NextRequest): string {
 function friendlyError(err: unknown): { message: string; retryable: boolean } {
   const msg = err instanceof Error ? err.message : String(err);
 
+  if (msg.includes('PIPELINE_TIMEOUT')) {
+    return {
+      message: 'The AI took too long to answer. Please try again with fewer photos.',
+      retryable: true,
+    };
+  }
   if (msg.includes('DAILY_QUOTA')) {
     const reset = msg.match(/resets in ([^)]+)\)?/)?.[1]?.trim();
     return {
@@ -123,8 +131,22 @@ export async function POST(req: NextRequest) {
 
   console.log(`[Process] Starting pipeline: ${assets.length} assets, event="${brief.eventName}", instagram=${brief.instagramType}`);
 
+  // Hard stop well below the platform's 300s limit: if the pipeline somehow
+  // runs over, answer anyway. A killed function never reaches the browser and
+  // shows up there as a bare "Failed to fetch".
+  let hardTimer: ReturnType<typeof setTimeout> | undefined;
+  const hardLimit = new Promise<never>((_, reject) => {
+    hardTimer = setTimeout(
+      () => reject(new Error('PIPELINE_TIMEOUT: the pipeline exceeded its time limit')),
+      HARD_LIMIT_MS
+    );
+  });
+
   try {
-    const result = await withRequestDeadline(PIPELINE_BUDGET_MS, () => runPipeline(brief, assets));
+    const result = await Promise.race([
+      withRequestDeadline(PIPELINE_BUDGET_MS, () => runPipeline(brief, assets)),
+      hardLimit,
+    ]);
     console.log(`[Process] Pipeline complete for "${brief.eventName}"`);
     return NextResponse.json({ result }, { status: 200 });
   } catch (err) {
@@ -132,6 +154,9 @@ export async function POST(req: NextRequest) {
     const { message, retryable } = friendlyError(err);
     // Always include raw error so we can debug from the browser network tab
     const rawMsg = String(err instanceof Error ? err.message : err).slice(0, 500);
-    return NextResponse.json({ error: message, retryable, _debug: rawMsg }, { status: 500 });
+    const status = rawMsg.includes('PIPELINE_TIMEOUT') ? 504 : 500;
+    return NextResponse.json({ error: message, retryable, _debug: rawMsg }, { status });
+  } finally {
+    if (hardTimer) clearTimeout(hardTimer);
   }
 }
