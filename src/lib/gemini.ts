@@ -55,6 +55,9 @@ const MODELS: ModelSpec[] = [
   { id: 'gemini-3.5-flash-lite',    supportsThinking: false },
   { id: 'gemini-flash-lite-latest', supportsThinking: false },
 ];
+
+/** The models the app talks to, in the order it tries them. */
+export const MODEL_IDS = MODELS.map(m => m.id);
 const sleep  = (ms: number) => new Promise<void>(r => setTimeout(r, ms));
 
 // (key, model) pairs whose daily free-tier quota is already spent — skipping

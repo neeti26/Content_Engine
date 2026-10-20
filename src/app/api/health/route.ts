@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
-import { hasAnyGeminiKey } from '@/lib/gemini';
+import { hasAnyGeminiKey, MODEL_IDS } from '@/lib/gemini';
 import { GoogleGenAI } from '@google/genai';
 
 export async function GET() {
   const geminiReady = hasAnyGeminiKey();
   const creatomateReady = !!process.env.CREATOMATE_API_KEY;
 
-  // Test each key until one works
+  // Test each key/model combination until one works
   let geminiTest: string = 'not tested';
   if (geminiReady) {
     const keys: string[] = [];
@@ -17,20 +17,23 @@ export async function GET() {
     const legacy = process.env.GEMINI_API_KEY?.trim();
     if (legacy && !keys.includes(legacy)) keys.push(legacy);
 
+    outer:
     for (let ki = 0; ki < keys.length; ki++) {
-      try {
-        const ai = new GoogleGenAI({ apiKey: keys[ki] });
-        const res = await ai.models.generateContent({
-          model: 'gemini-3.6-flash',
-          contents: [{ role: 'user', parts: [{ text: 'Reply with just the word: OK' }] }],
-          config: { maxOutputTokens: 10, temperature: 0 },
-        });
-        geminiTest = `OK (key ${ki + 1} of ${keys.length})`;
-        break;
-      } catch (err) {
-        const msg = String(err).slice(0, 120);
-        geminiTest = `Key ${ki + 1} ERROR: ${msg}`;
-        // continue to next key
+      for (const model of MODEL_IDS) {
+        try {
+          const ai = new GoogleGenAI({ apiKey: keys[ki] });
+          const res = await ai.models.generateContent({
+            model,
+            contents: [{ role: 'user', parts: [{ text: 'Reply with just the word: OK' }] }],
+            config: { maxOutputTokens: 10, temperature: 0 },
+          });
+          geminiTest = `OK (key ${ki + 1} of ${keys.length}, ${model})`;
+          break outer;
+        } catch (err) {
+          const msg = String(err).slice(0, 120);
+          geminiTest = `Key ${ki + 1} / ${model} ERROR: ${msg}`;
+          // continue with the next key/model
+        }
       }
     }
   }
