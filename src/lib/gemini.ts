@@ -21,6 +21,9 @@ function getAvailableKeys(): string[] {
 
 // Module-level round-robin index — persists across requests in the same serverless instance
 let _keyIndex = 0;
+// The free tier allows 20 requests per DAY per key per model, so the calls are
+// spread over the models as well — otherwise one model would be drained first.
+let _modelIndex = 0;
 
 function nextKey(): string {
   const keys = getAvailableKeys();
@@ -50,10 +53,13 @@ export interface ModelSpec {
 }
 
 const MODELS: ModelSpec[] = [
-  { id: 'gemini-3.6-flash',         supportsThinking: true },
-  { id: 'gemini-3.5-flash',         supportsThinking: true },
-  { id: 'gemini-3.5-flash-lite',    supportsThinking: false },
-  { id: 'gemini-flash-lite-latest', supportsThinking: false },
+  { id: 'gemini-3.6-flash',              supportsThinking: true },
+  { id: 'gemini-3.5-flash',              supportsThinking: true },
+  { id: 'gemini-3.7-flash',              supportsThinking: true },
+  { id: 'gemini-3.5-flash-lite',         supportsThinking: false },
+  { id: 'gemini-flash-lite-latest',      supportsThinking: false },
+  { id: 'gemini-3.1-flash-lite',         supportsThinking: false },
+  { id: 'gemini-3.1-flash-lite-preview', supportsThinking: false },
 ];
 
 /** The models the app talks to, in the order it tries them. */
@@ -131,7 +137,7 @@ function parseJSON<T>(text: string): T {
 // Every call is capped by a wall-clock budget. Without it a request that hits
 // free-tier rate limits can retry for minutes, the Vercel function gets killed
 // at its 300s limit and the browser reports a bare "Failed to fetch".
-const RETRY_BUDGET_MS = 20_000;      // max wall-clock for a single Gemini call
+const RETRY_BUDGET_MS = 15_000;      // max wall-clock for a single Gemini call
 const RATE_LIMIT_BACKOFF_MS = 1_500; // short, bounded wait when every key is throttled
 const OVERLOAD_BACKOFF_MS = 1_200;   // brief wait when a model answers "high demand"
 
@@ -143,14 +149,21 @@ async function withRetry<T>(fn: (ai: GoogleGenAI, model: ModelSpec) => Promise<T
   let rateLimitRound = 0;
   const deadline = Date.now() + clampBudget(RETRY_BUDGET_MS);
 
+  // Start every call on the next key/model so the daily quota is used evenly
+  const keyStart = _keyIndex;
+  const modelStart = _modelIndex;
+  _keyIndex = (_keyIndex + 1) % keys.length;
+  _modelIndex = (_modelIndex + 1) % MODELS.length;
+
   // Outer loop: rotate through keys on rate-limit
   for (let keyTry = 0; keyTry < keys.length * 2; keyTry++) {
     if (Date.now() >= deadline) break;
-    const keyIndex = (_keyIndex + keyTry) % keys.length;
+    const keyIndex = (keyStart + keyTry) % keys.length;
     const apiKey = keys[keyIndex];
     const ai     = getAI(apiKey);
 
-    for (const model of MODELS) {
+    for (let modelTry = 0; modelTry < MODELS.length; modelTry++) {
+      const model = MODELS[(modelStart + modelTry) % MODELS.length];
       const bucket = `${keyIndex}:${model.id}`;
       if (_exhaustedBuckets.has(bucket)) continue; // daily quota already spent
 
@@ -159,7 +172,7 @@ async function withRetry<T>(fn: (ai: GoogleGenAI, model: ModelSpec) => Promise<T
         try {
           const result = await fn(ai, model);
           // Advance global index so next call starts from the next key
-          _keyIndex = (_keyIndex + keyTry + 1) % keys.length;
+          _keyIndex = (keyIndex + 1) % keys.length;
           return result;
         } catch (err) {
           lastErr = err;
@@ -223,14 +236,21 @@ async function withRetry<T>(fn: (ai: GoogleGenAI, model: ModelSpec) => Promise<T
 }
 
 // ─── Score & Describe Image ───────────────────────────────────────────────────
+export interface AssetDescription {
+  sharpness: number; composition: number; brandRelevance: number;
+  humanEngagement: number; overall: number; reasoning: string; description: string;
+}
+
+const NEUTRAL_SCORE: AssetDescription = {
+  sharpness: 5, composition: 5, brandRelevance: 5,
+  humanEngagement: 5, overall: 5, reasoning: '', description: 'Event photo',
+};
+
 export async function scoreAndDescribeImage(
   base64Image: string,
   mimeType: string,
   eventContext: string
-): Promise<{
-  sharpness: number; composition: number; brandRelevance: number;
-  humanEngagement: number; overall: number; reasoning: string; description: string;
-}> {
+): Promise<AssetDescription> {
   return withRetry(async (ai, model) => {
     const res = await ai.models.generateContent({
       model: model.id,
@@ -258,6 +278,68 @@ export async function scoreAndDescribeImage(
       reasoning:       parsed.reasoning   ?? "",
       description:     parsed.description ?? "Event photo",
     };
+  });
+}
+
+/**
+ * Score several photos in ONE request.
+ *
+ * The free tier allows 20 requests per day per key per model, so sending one
+ * request per photo burns the quota three times faster than it has to. The
+ * model is asked for one entry per photo, indexed by its position.
+ */
+export async function scoreAndDescribeImages(
+  images: Array<{ base64: string; mimeType: string }>,
+  eventContext: string
+): Promise<AssetDescription[]> {
+  if (images.length === 0) return [];
+  if (images.length === 1) {
+    return [await scoreAndDescribeImage(images[0].base64, images[0].mimeType, eventContext)];
+  }
+
+  const parts: Array<Record<string, unknown>> = images.map(img => ({
+    inlineData: { data: img.base64, mimeType: img.mimeType },
+  }));
+
+  const example = Array.from({ length: images.length }, (_, i) =>
+    `{"index":${i + 1},"sharpness":7,"composition":8,"brandRelevance":6,"humanEngagement":9,"overall":7.5,"reasoning":"one sentence","description":"what you see in 10 words"}`
+  ).join(',');
+
+  parts.push({
+    text: `Score these ${images.length} event photos for marketing use, in the order they are shown. Event: ${eventContext}\n\nRespond with ONLY this JSON (no extra text, no markdown):\n{"photos":[${example}]}`,
+  });
+
+  return withRetry(async (ai, model) => {
+    const res = await ai.models.generateContent({
+      model: model.id,
+      contents: [{ role: "user", parts: parts as never }],
+      config: buildConfig({ maxOutputTokens: 400 * images.length, temperature: 0.1 }, model),
+    });
+
+    const parsed = parseJSON<{
+      photos?: Array<{
+        index?: number; sharpness?: number; composition?: number;
+        brandRelevance?: number; humanEngagement?: number; overall?: number;
+        reasoning?: string; description?: string;
+      }>;
+    }>(res.text ?? "");
+
+    const byIndex = new Map<number, AssetDescription>();
+    for (const p of parsed.photos ?? []) {
+      const idx = (Number(p.index) || 0) - 1;
+      if (idx < 0 || idx >= images.length) continue;
+      byIndex.set(idx, {
+        sharpness:       Number(p.sharpness)       || 5,
+        composition:     Number(p.composition)     || 5,
+        brandRelevance:  Number(p.brandRelevance)  || 5,
+        humanEngagement: Number(p.humanEngagement) || 5,
+        overall:         Number(p.overall)         || 5,
+        reasoning:       p.reasoning   ?? '',
+        description:     p.description ?? "Event photo",
+      });
+    }
+
+    return images.map((_, i) => byIndex.get(i) ?? { ...NEUTRAL_SCORE });
   });
 }
 

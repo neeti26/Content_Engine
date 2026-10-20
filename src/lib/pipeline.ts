@@ -1,6 +1,7 @@
 import { EventBrief, MediaAsset, GeneratedContent } from '@/types';
 import { scoreAllAssets, selectBestAssets, fallbackSelection } from './assetScorer';
 import { submitReelRender } from './creatomate';
+import { beginPhase, endPhase, remainingMs } from './deadline';
 import {
   generateLinkedInContent,
   generateInstagramPostContent,
@@ -29,9 +30,18 @@ export async function runPipeline(
 
   console.log(`[Pipeline] Starting — ${assets.length} assets, instagramType=${brief.instagramType}`);
 
+  // The request budget is split: scoring the photos and picking the assets
+  // are the first to be cut short when the AI is slow — the written content
+  // is what the user came for.
+  const total = remainingMs();
+  const scoringBudget = total === Infinity ? 60_000 : Math.max(10_000, total * 0.4);
+  beginPhase(scoringBudget);
   const scoredAssets = await scoreAllAssets(assets, ctx);
+  endPhase();
   console.log(`[Pipeline] Scored ${scoredAssets.length} assets`);
 
+  const selectionBudget = remainingMs() === Infinity ? 30_000 : Math.max(8_000, remainingMs() * 0.3);
+  beginPhase(selectionBudget);
   // A busy model must not fail the whole request — fall back to the best
   // scored photo per platform.
   const selection = await safe(
@@ -39,6 +49,7 @@ export async function runPipeline(
     () => selectBestAssets(scoredAssets, ctx),
     fallbackSelection(scoredAssets)
   );
+  endPhase();
   console.log(`[Pipeline] Selection complete`);
 
   const find = (id: string) => scoredAssets.find((a) => a.id === id) ?? scoredAssets[0];

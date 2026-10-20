@@ -1,6 +1,6 @@
 import { MediaAsset, AssetScore } from '@/types';
-import { scoreAndDescribeImage, generateJSON } from './gemini';
-import { deadlineExceeded } from './deadline';
+import { scoreAndDescribeImages, scoreAndDescribeImage, generateJSON } from './gemini';
+import { deadlineExceeded, phaseExceeded } from './deadline';
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -15,27 +15,49 @@ export async function scoreAllAssets(
     const batch = assets.slice(i, i + BATCH);
 
     // Out of time — score the rest with defaults so the request still finishes
-    if (deadlineExceeded()) {
+    if (deadlineExceeded() || phaseExceeded()) {
       for (const asset of batch) scored.push(fallbackScored(asset));
       continue;
     }
 
-    const results = await Promise.allSettled(
-      batch.map((a) => {
-        const base64  = a.type === 'video' && a.thumbnailBase64 ? a.thumbnailBase64 : a.base64;
-        const mime    = a.type === 'video' ? 'image/jpeg' : a.mimeType;
-        const context = a.type === 'video' ? `${eventContext} (video thumbnail)` : eventContext;
-        return scoreAndDescribeImage(base64, mime, context);
-      })
-    );
+    // One request for the whole batch — the free tier only allows 20 requests
+    // per day per key per model, so every saved call matters.
+    const payload = batch.map(a => ({
+      base64: a.type === 'video' && a.thumbnailBase64 ? a.thumbnailBase64 : a.base64,
+      mimeType: a.type === 'video' ? 'image/jpeg' : a.mimeType,
+    }));
+
+    let results: Array<{
+      sharpness: number; composition: number; brandRelevance: number;
+      humanEngagement: number; overall: number; reasoning: string; description: string;
+    }> = [];
+    try {
+      results = await scoreAndDescribeImages(payload, eventContext);
+    } catch (err) {
+      const msg = String(err);
+      // A quota/rate-limit problem will not get better by asking again, so only
+      // fall back to one request per photo when the batch itself was rejected.
+      if (!/429|quota|503|UNAVAILABLE|high demand|fetch failed/i.test(msg)) {
+        console.warn('[Scorer] Batch request rejected, scoring photos one by one');
+        try {
+          results = await Promise.all(
+            payload.map(p => scoreAndDescribeImage(p.base64, p.mimeType, eventContext))
+          );
+        } catch {
+          results = [];
+        }
+      } else {
+        console.error('[Scorer] Batch scoring failed, using default scores:', msg.slice(0, 160));
+      }
+    }
+
     for (let j = 0; j < batch.length; j++) {
       const asset = batch[j];
-      const r = results[j];
-      if (r.status === 'fulfilled') {
-        const v = r.value;
+      const v = results[j];
+      if (v) {
         scored.push({
           ...asset,
-          description: v.description ?? (asset.type === 'video' ? 'Event video' : 'Event photo'),
+          description: v.description || (asset.type === 'video' ? 'Event video' : 'Event photo'),
           score: {
             sharpness:       clamp(v.sharpness, 0, 10),
             composition:     clamp(v.composition, 0, 10),

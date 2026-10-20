@@ -12,7 +12,7 @@ export const dynamic = 'force-dynamic';
 // Wall-clock budget for the whole pipeline. The function is killed at 300s by
 // the platform and a killed function reaches the browser as "Failed to fetch",
 // so we always answer well before that.
-const PIPELINE_BUDGET_MS = 210_000;
+const PIPELINE_BUDGET_MS = 150_000;
 
 function getClientIp(req: NextRequest): string {
   return (

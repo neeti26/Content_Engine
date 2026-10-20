@@ -19,7 +19,7 @@ type AppStep = 'hero' | 'upload' | 'brief' | 'processing' | 'results';
 // The server pipeline is capped well below this — the client timeout only
 // exists so a dropped connection shows a real message instead of a bare
 // "Failed to fetch".
-const REQUEST_TIMEOUT_MS = 240_000;
+const REQUEST_TIMEOUT_MS = 280_000;
 
 // Clerk is optional. `useUser()` may only be called inside <ClerkProvider />,
 // which is only rendered when Clerk is configured. The flag is a build-time
