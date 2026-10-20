@@ -63,14 +63,41 @@ function fallbackScored(asset: MediaAsset): MediaAsset & { description: string }
   };
 }
 
-export async function selectBestAssets(
-  assets: Array<MediaAsset & { description?: string }>,
-  eventContext: string
-): Promise<{
+export interface AssetSelection {
   linkedin: string; instagramPost: string;
   twitter: string; whatsapp: string; caseStudy: string[];
   instagramReel: string; rationale: Record<string, string>;
-}> {
+}
+
+/**
+ * Pick the assets without asking the AI — the best scored photo per platform.
+ * Used when the selection call fails (e.g. the model is temporarily busy), so
+ * a hiccup there never fails the whole request.
+ */
+export function fallbackSelection(
+  assets: Array<MediaAsset & { description?: string }>
+): AssetSelection {
+  const scored = [...assets]
+    .filter((a) => a.score)
+    .sort((a, b) => (b.score?.overall ?? 0) - (a.score?.overall ?? 0));
+  const bestVideo = assets.find(a => a.type === 'video');
+  const ids = assets.map((a) => a.id);
+
+  return {
+    linkedin:      scored[0]?.id ?? ids[0] ?? '',
+    instagramPost: scored[1]?.id ?? scored[0]?.id ?? ids[0] ?? '',
+    instagramReel: bestVideo?.id ?? scored[0]?.id ?? ids[0] ?? '',
+    twitter:       scored[1]?.id ?? scored[0]?.id ?? ids[0] ?? '',
+    whatsapp:      scored[1]?.id ?? scored[0]?.id ?? ids[0] ?? '',
+    caseStudy:     scored.slice(0, 4).map((a) => a.id),
+    rationale:     {} as Record<string, string>,
+  };
+}
+
+export async function selectBestAssets(
+  assets: Array<MediaAsset & { description?: string }>,
+  eventContext: string
+): Promise<AssetSelection> {
   const scored = [...assets]
     .filter((a) => a.score)
     .sort((a, b) => (b.score?.overall ?? 0) - (a.score?.overall ?? 0));
@@ -78,16 +105,7 @@ export async function selectBestAssets(
   const bestVideo = assets.find(a => a.type === 'video');
 
   if (scored.length === 0) {
-    const ids = assets.map((a) => a.id);
-    return {
-      linkedin:      ids[0] ?? '',
-      instagramPost: ids[1] ?? ids[0] ?? '',
-      instagramReel: bestVideo?.id ?? ids[0] ?? '',
-      twitter:       ids[1] ?? ids[0] ?? '',
-      whatsapp:      ids[1] ?? ids[0] ?? '',
-      caseStudy:     ids.slice(0, 4),
-      rationale:     {} as Record<string, string>,
-    };
+    return fallbackSelection(assets);
   }
 
   const summaries = scored.slice(0, 8).map((a) => ({

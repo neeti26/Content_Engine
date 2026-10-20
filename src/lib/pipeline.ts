@@ -1,5 +1,5 @@
 import { EventBrief, MediaAsset, GeneratedContent } from '@/types';
-import { scoreAllAssets, selectBestAssets } from './assetScorer';
+import { scoreAllAssets, selectBestAssets, fallbackSelection } from './assetScorer';
 import { submitReelRender } from './creatomate';
 import {
   generateLinkedInContent,
@@ -32,7 +32,13 @@ export async function runPipeline(
   const scoredAssets = await scoreAllAssets(assets, ctx);
   console.log(`[Pipeline] Scored ${scoredAssets.length} assets`);
 
-  const selection = await selectBestAssets(scoredAssets, ctx);
+  // A busy model must not fail the whole request — fall back to the best
+  // scored photo per platform.
+  const selection = await safe(
+    'asset-selection',
+    () => selectBestAssets(scoredAssets, ctx),
+    fallbackSelection(scoredAssets)
+  );
   console.log(`[Pipeline] Selection complete`);
 
   const find = (id: string) => scoredAssets.find((a) => a.id === id) ?? scoredAssets[0];

@@ -133,6 +133,7 @@ function parseJSON<T>(text: string): T {
 // at its 300s limit and the browser reports a bare "Failed to fetch".
 const RETRY_BUDGET_MS = 20_000;      // max wall-clock for a single Gemini call
 const RATE_LIMIT_BACKOFF_MS = 1_500; // short, bounded wait when every key is throttled
+const OVERLOAD_BACKOFF_MS = 1_200;   // brief wait when a model answers "high demand"
 
 async function withRetry<T>(fn: (ai: GoogleGenAI, model: ModelSpec) => Promise<T>): Promise<T> {
   const keys = getAvailableKeys();
@@ -178,10 +179,10 @@ async function withRetry<T>(fn: (ai: GoogleGenAI, model: ModelSpec) => Promise<T
 
           const isAuth      = msg.includes("401") || msg.includes("API_KEY") || msg.includes("UNAUTHENTICATED") || msg.includes("not configured");
           const isRateLimit = msg.includes("429") || msg.includes("RESOURCE_EXHAUSTED") || msg.includes("Too Many") || msg.includes("quota");
-          // 503 = the model itself is overloaded right now — another model on the
-          // same key is a better bet than retrying the same one.
-          const isModelErr  = msg.includes("404") || msg.includes("not found") || msg.includes("deprecated") || msg.includes("INVALID_ARGUMENT")
-            || msg.includes("503") || msg.includes("UNAVAILABLE") || msg.includes("high demand");
+          // 503 = the model is overloaded right now — a transient condition, so
+          // give it another moment before switching to a different model.
+          const isOverloaded = msg.includes("503") || msg.includes("UNAVAILABLE") || msg.includes("high demand");
+          const isModelErr  = msg.includes("404") || msg.includes("not found") || msg.includes("deprecated") || msg.includes("INVALID_ARGUMENT");
 
           if (isAuth) {
             console.error(`[Gemini] Auth error on key index ${keyIndex}: ${msg.slice(0, 120)}`);
@@ -195,6 +196,15 @@ async function withRetry<T>(fn: (ai: GoogleGenAI, model: ModelSpec) => Promise<T
               await sleep(RATE_LIMIT_BACKOFF_MS);
             }
             break; // immediately try next key
+          }
+          if (isOverloaded) {
+            if (attempt < 1 && Date.now() + OVERLOAD_BACKOFF_MS < deadline) {
+              console.warn(`[Gemini] Model ${model.id} busy (503) on key ${keyIndex + 1}/${keys.length}, retrying shortly...`);
+              await sleep(OVERLOAD_BACKOFF_MS);
+              continue;
+            }
+            console.warn(`[Gemini] Model ${model.id} unavailable, trying next model`);
+            break; // try next model
           }
           if (isModelErr) {
             console.warn(`[Gemini] Model ${model.id} unavailable, trying next model`);
