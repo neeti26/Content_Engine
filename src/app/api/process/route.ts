@@ -96,8 +96,8 @@ export async function POST(req: NextRequest) {
   const userId = await currentUserId();
   const rateLimitKey = userId ?? ip;
   // The real limit is the AI provider's daily quota — this only stops a
-  // runaway loop. 30 an hour per person is plenty to work with.
-  const limit = checkRateLimit(rateLimitKey, 30, 60 * 60 * 1000);
+  // runaway loop. 20 an hour per person is plenty to work with.
+  const limit = checkRateLimit(rateLimitKey, 20, 60 * 60 * 1000);
   if (!limit.allowed) {
     const resetIn = Math.ceil((limit.resetAt - Date.now()) / 60000);
     return NextResponse.json(
