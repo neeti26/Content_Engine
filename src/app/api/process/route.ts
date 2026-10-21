@@ -95,7 +95,9 @@ export async function POST(req: NextRequest) {
   // Use Clerk user ID for rate limiting when signed in (per-user, not per-IP)
   const userId = await currentUserId();
   const rateLimitKey = userId ?? ip;
-  const limit = checkRateLimit(rateLimitKey, 5, 60 * 60 * 1000);
+  // The real limit is the AI provider's daily quota — this only stops a
+  // runaway loop. 30 an hour per person is plenty to work with.
+  const limit = checkRateLimit(rateLimitKey, 30, 60 * 60 * 1000);
   if (!limit.allowed) {
     const resetIn = Math.ceil((limit.resetAt - Date.now()) / 60000);
     return NextResponse.json(

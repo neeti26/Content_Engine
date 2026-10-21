@@ -1,7 +1,7 @@
 ﻿'use client';
 
 import { useState, useCallback } from 'react';
-import { useDropzone } from 'react-dropzone';
+import { useDropzone, type FileRejection } from 'react-dropzone';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Upload, X, CheckCircle, ArrowRight, ArrowLeft, AlertCircle, Film } from 'lucide-react';
 import { MediaAsset } from '@/types';
@@ -41,7 +41,7 @@ function compressForAPI(
   });
 }
 // Compress image to display quality (stored in client state for preview)
-function compressImage(file: File, maxDimension = 1920, quality = 0.85): Promise<{ base64: string; mimeType: string; size: number }> {
+function compressImage(file: Blob, maxDimension = 1920, quality = 0.85): Promise<{ base64: string; mimeType: string; size: number }> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -112,13 +112,33 @@ function readVideoAsBase64(file: File): Promise<string> {
   });
 }
 
+// ─── HEIC / HEIF ─────────────────────────────────────────────────────────────
+// iPhone photos are HEIC and Chrome cannot decode them. Convert them in the
+// browser instead of silently dropping the file.
+const HEIC_EXT = /\.(heic|heif)$/i;
+
+function isHeic(file: File): boolean {
+  return HEIC_EXT.test(file.name) || /image\/hei[cf]/i.test(file.type);
+}
+
+async function convertHeic(file: File): Promise<Blob> {
+  const heic2any = (await import('heic2any')).default;
+  const converted = await heic2any({
+    blob: file,
+    toType: 'image/jpeg',
+    quality: 0.9,
+  });
+  const result = Array.isArray(converted) ? converted[0] : converted;
+  return result as Blob;
+}
+
 export default function UploadStep({ onNext, onBack }: Props) {
   const [assets, setAssets] = useState<MediaAsset[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [compressing, setCompressing] = useState(false);
 
   const processFile = useCallback(async (file: File): Promise<MediaAsset> => {
-    const isVideo = file.type.startsWith('video/');
+    const isVideo = file.type.startsWith('video/') || /\.(mp4|mov|webm|mkv|avi|m4v)$/i.test(file.name);
 
     if (isVideo) {
       const thumbnailResult = await extractVideoThumbnail(file);
@@ -134,22 +154,36 @@ export default function UploadStep({ onNext, onBack }: Props) {
         thumbnailBase64: thumbnailResult.thumbnailBase64,
       };
     } else {
-      const { base64, mimeType, size } = await compressImage(file);
+      // HEIC/HEIF photos have to be converted before the browser can read them
+      let source: Blob = file;
+      if (isHeic(file)) {
+        source = await convertHeic(file);
+      }
+      const { base64, mimeType, size } = await compressImage(source);
       // Produce a smaller copy for the API payload (~800px, q0.72 → ~30-80KB)
       const api = await compressForAPI(base64, mimeType);
       return { id: uuidv4(), name: file.name, type: 'image', base64, mimeType, size, apiBase64: api.base64 };
     }
   }, []);
 
-  const onDrop = useCallback(async (accepted: File[]) => {
+  const onDrop = useCallback(async (accepted: File[], rejections: FileRejection[]) => {
     setError(null);
     const remaining = MAX - assets.length;
     const toProcess = accepted.slice(0, remaining);
     if (accepted.length > remaining) setError(`Max ${MAX} files — only ${remaining} more allowed`);
 
+    // Files the dropzone refused — say so, never drop them silently
+    if (rejections.length > 0) {
+      const names = rejections.map(r => r.file.name).slice(0, 3).join(', ');
+      setError(
+        `${rejections.length} file(s) skipped (${names}${rejections.length > 3 ? '…' : ''}) — only JPG, PNG, WebP, HEIC photos and MP4/MOV videos are supported.`
+      );
+    }
+
     const valid: File[] = [];
+    const failed: string[] = [];
     for (const f of toProcess) {
-      const isVideo = f.type.startsWith('video/');
+      const isVideo = f.type.startsWith('video/') || /\.(mp4|mov|webm|mkv|avi|m4v)$/i.test(f.name);
       const maxMb = isVideo ? MAX_VIDEO_MB : MAX_IMAGE_MB;
       if (f.size > maxMb * 1024 * 1024) {
         setError(`"${f.name}" exceeds ${maxMb}MB limit and was skipped`);
@@ -159,21 +193,44 @@ export default function UploadStep({ onNext, onBack }: Props) {
     }
 
     setCompressing(true);
-    try {
-      const processed = await Promise.all(valid.map(processFile));
-      setAssets(prev => [...prev, ...processed]);
-    } catch {
-      setError('Failed to process some files. Please try again.');
-    } finally {
-      setCompressing(false);
+    const processed: MediaAsset[] = [];
+    for (const f of valid) {
+      try {
+        processed.push(await processFile(f));
+      } catch (err) {
+        failed.push(f.name);
+        console.error('[Upload] Could not process', f.name, err);
+      }
     }
+    setAssets(prev => [...prev, ...processed]);
+    if (failed.length > 0) {
+      setError(
+        `Could not read ${failed.length} file(s): ${failed.slice(0, 3).join(', ')}${failed.length > 3 ? '…' : ''}. Try exporting them as JPG.`
+      );
+    }
+    setCompressing(false);
   }, [assets.length, processFile]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
+    // Real-world camera files: the extensions are listed as well, because
+    // Windows often reports no MIME type at all and the file would otherwise
+    // be dropped without a word.
     accept: {
-      'image/jpeg': [], 'image/png': [], 'image/webp': [],
-      'video/mp4': [], 'video/quicktime': [], 'video/webm': [], 'video/mov': [],
+      'image/jpeg':  ['.jpg', '.jpeg'],
+      'image/png':   ['.png'],
+      'image/webp':  ['.webp'],
+      'image/avif':  ['.avif'],
+      'image/heic':  ['.heic', '.heif'],
+      'image/heif':  ['.heic', '.heif'],
+      'image/bmp':   ['.bmp'],
+      'image/*':     [],
+      'video/mp4':        ['.mp4', '.m4v'],
+      'video/quicktime':  ['.mov', '.qt'],
+      'video/webm':       ['.webm'],
+      'video/x-matroska': ['.mkv'],
+      'video/avi':        ['.avi'],
+      'video/*':          [],
     },
     disabled: assets.length >= MAX,
   });

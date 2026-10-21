@@ -31,6 +31,10 @@ const steps = [
   { n: '04', label: 'Get 5 Outputs',       sub: 'Copy, download, export' },
 ];
 
+// Sign-in only exists when Clerk is configured — otherwise the link would
+// lead to a dead end.
+const signInEnabled = !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+
 export default function HeroSection({ onStart, onDemo, isSignedIn, userEmail, onShowHistory }: Props) {
   return (
     <div className="min-h-screen flex flex-col relative overflow-hidden">
@@ -62,7 +66,7 @@ export default function HeroSection({ onStart, onDemo, isSignedIn, userEmail, on
               History
             </button>
           )}
-          {!isSignedIn && (
+          {!isSignedIn && signInEnabled && (
             <a
               href="/sign-in"
               className="flex items-center gap-1.5 text-xs font-semibold text-white border border-violet-500/40 hover:border-violet-400/60 px-4 py-1.5 rounded-full transition-all"
